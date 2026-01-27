@@ -29,12 +29,16 @@ export default function PostForm({ placeName, onPosted }){
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-2 mb-4">
-      <textarea className="w-full p-2 text-black" rows={3} placeholder="What's happening?" value={content} onChange={e=>setContent(e.target.value)} />
-      <input type="file" multiple accept="image/*,video/*" onChange={e=>setFiles(e.target.files)} />
-      <div>
-        <button disabled={loading} className="mt-2">{loading? 'Posting...' : 'Post'}</button>
-      </div>
-    </form>
+    <div className="card mb-4">
+      <form onSubmit={handleSubmit} className="space-y-2">
+        <textarea className="w-full p-2" rows={3} placeholder="Share a post (text, image or video)" value={content} onChange={e=>setContent(e.target.value)} />
+        <div className="flex items-center gap-2">
+          <input type="file" multiple accept="image/*,video/*" onChange={e=>setFiles(e.target.files)} />
+          <div style={{marginLeft:'auto'}}>
+            <button disabled={loading}>{loading? 'Posting...' : 'Post'}</button>
+          </div>
+        </div>
+      </form>
+    </div>
   )
 }

@@ -23,14 +23,18 @@ export default function ProductForm({ placeName, onCreated }){
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-2 mt-4">
-      <input className="w-full p-2 text-black" placeholder="Product title" value={title} onChange={e=>setTitle(e.target.value)} />
-      <textarea className="w-full p-2 text-black" rows={2} placeholder="Description" value={description} onChange={e=>setDescription(e.target.value)} />
-      <input className="p-2" placeholder="Price" value={price} onChange={e=>setPrice(e.target.value)} />
-      <input type="file" accept="image/*" onChange={e=>setFile(e.target.files[0])} />
-      <div>
-        <button className="mt-2" disabled={loading}>{loading? 'Creating...' : 'Create Product'}</button>
-      </div>
-    </form>
+    <div className="card">
+      <form onSubmit={handleSubmit} className="space-y-2">
+        <input className="w-full p-2" placeholder="Product title" value={title} onChange={e=>setTitle(e.target.value)} />
+        <textarea className="w-full p-2" rows={2} placeholder="Description" value={description} onChange={e=>setDescription(e.target.value)} />
+        <div className="flex gap-2">
+          <input className="p-2" placeholder="Price" value={price} onChange={e=>setPrice(e.target.value)} />
+          <input type="file" accept="image/*" onChange={e=>setFile(e.target.files[0])} />
+        </div>
+        <div style={{display:'flex',justifyContent:'flex-end'}}>
+          <button disabled={loading}>{loading? 'Creating...' : 'Create Product'}</button>
+        </div>
+      </form>
+    </div>
   )
 }
