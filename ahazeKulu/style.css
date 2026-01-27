@@ -1,0 +1,64 @@
+*
+{
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+
+}
+body
+{
+    background-size: cover;
+    background-position: center;
+    font-family: sans-serif;
+}
+.All 
+{
+    background: green;
+    list-style: none;
+    text-align: center;
+}
+.All ul{
+    display: inline-flex;
+    list-style: none;
+    color: white;
+}
+.All ul li
+{
+width: 120px;
+margin: 15px;
+padding: 15px;
+}
+.All ul li a{
+    text-decoration: none;
+    color: white;
+}
+.RC, .All ul li:hover
+{
+background: blue;
+border-radius: 3px;
+}
+.SC
+{
+    display: none;
+
+}
+.All ul li:hover .SC
+{
+    display: block;
+    position: absolute;
+    background: rgb(0, 100, 0);
+    margin-top: 15px;
+    margin-left: -auto;
+}
+.All ul li:hover .SC ul{
+    display: block;
+}
+.All ul li:hover .SC ul li{
+    width: 150px;
+    padding: 10px;
+    border-bottom: 1px dotted #fff;
+    background: transparent;
+    border-radius: 0px;
+    text-align: left;
+    text-decoration: none;
+}
