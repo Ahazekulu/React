@@ -8,7 +8,7 @@ export default function ForSaleTab({ placeId }){
 
   async function loadProducts(){
     setLoading(true)
-    const { data } = await supabase.from('products').select('*').eq('place_id', placeId).order('created_at', { ascending: false })
+    const { data } = await supabase.from('products').select('*').eq('place_name', placeId).order('created_at', { ascending: false })
     setProducts(data || [])
     setLoading(false)
   }
@@ -16,15 +16,14 @@ export default function ForSaleTab({ placeId }){
   useEffect(()=>{ 
     loadProducts()
 
-    const subscription = supabase
-      .channel('products-channel')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'products', filter: `place_id=eq.${placeId}` }, payload => {
-        loadProducts()
-      })
-      .subscribe()
+    const channel = supabase.channel('products-channel')
+    channel.on('postgres_changes', { event: '*', schema: 'public', table: 'products', filter: `place_name=eq.${placeId}` }, () => {
+      loadProducts()
+    })
+    channel.subscribe()
 
     return ()=> {
-      supabase.removeChannel(subscription)
+      supabase.removeChannel(channel)
     }
   },[placeId])
 
@@ -51,12 +50,14 @@ export default function ForSaleTab({ placeId }){
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {products.map(p => (
           <div key={p.id} className="bg-white rounded-lg shadow overflow-hidden">
-            {p.image_url && <img src={p.image_url} alt={p.title} className="w-full h-48 object-cover"/>}
+            {p.media_urls && p.media_urls.length > 0 && (
+              <img src={p.media_urls[0]} alt={p.title} className="w-full h-48 object-cover"/>
+            )}
             <div className="p-4">
               <h3 className="font-bold text-lg">{p.title}</h3>
               <p className="text-gray-600 text-sm mb-2">{p.description}</p>
               <div className="flex justify-between items-center">
-                <span className="text-xl font-semibold">${p.price}</span>
+                <span className="text-xl font-semibold">{p.currency ? `${p.currency} ${p.price}` : `$${p.price}`}</span>
                 <button 
                   onClick={() => handleAddToCart(p)}
                   className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"

@@ -16,8 +16,14 @@ export default function ProductForm({ placeName, onCreated }){
       const { data, error } = await supabase.storage.from('uploads').upload(path, file)
       if(!error){ media.push(supabase.storage.from('uploads').getPublicUrl(data.path).publicURL) }
     }
-    const payload = { title, description, price: parseFloat(price)||0, media_urls: media, place_id: placeName }
-    await supabase.from('products').insert([payload])
+    const payload = { title, description, price: parseFloat(price)||0, media_urls: media, place_name: placeName }
+    const { error } = await supabase.from('products').insert([payload])
+    if (error) {
+      console.error('insert product error', error)
+      alert('Failed to create product: ' + error.message)
+      setLoading(false)
+      return
+    }
     setTitle(''); setDescription(''); setPrice(''); setFile(null); setLoading(false)
     onCreated && onCreated()
   }

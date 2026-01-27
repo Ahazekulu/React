@@ -11,7 +11,7 @@ export default function PostsTab({ placeId }){
 
   async function loadPosts(){
     setLoading(true)
-    const { data } = await supabase.from('posts').select('*, user:users(email)').eq('place_id', placeId).order('created_at', { ascending: false })
+    const { data } = await supabase.from('posts').select('*, user:users(email)').eq('place_name', placeId).order('created_at', { ascending: false })
     setPosts(data || [])
     setLoading(false)
   }
@@ -19,15 +19,14 @@ export default function PostsTab({ placeId }){
   useEffect(()=>{ 
     loadPosts();
     
-    const subscription = supabase
-      .channel('posts-channel')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts', filter: `place_id=eq.${placeId}` }, payload => {
-        loadPosts()
-      })
-      .subscribe()
+    const channel = supabase.channel('posts-channel')
+    channel.on('postgres_changes', { event: '*', schema: 'public', table: 'posts', filter: `place_name=eq.${placeId}` }, () => {
+      loadPosts()
+    })
+    channel.subscribe()
 
     return ()=> {
-      supabase.removeChannel(subscription)
+      supabase.removeChannel(channel)
     }
   },[placeId])
 

@@ -22,8 +22,14 @@ export default function PostForm({ placeName, onPosted }){
   const handleSubmit = async (e) =>{
     e.preventDefault(); setLoading(true)
     const media = await uploadFiles()
-    const payload = { content, media_urls: media, place_id: placeName }
-    await supabase.from('posts').insert([payload])
+    const payload = { content, media_urls: media, place_name: placeName }
+    const { error } = await supabase.from('posts').insert([payload])
+    if (error) {
+      console.error('insert post error', error)
+      alert('Failed to post: ' + error.message)
+      setLoading(false)
+      return
+    }
     setContent(''); setFiles(null); setLoading(false)
     onPosted && onPosted()
   }
