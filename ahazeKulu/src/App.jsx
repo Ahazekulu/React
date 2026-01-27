@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import Places from './pages/Places'
 import Nav from './components/Nav'
 import './App.css'
+import Cart from './pages/Cart'
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
         <Route path="/places/*" element={<Places />} />
+        <Route path="/cart" element={<Cart />} />
       </Routes>
     </BrowserRouter>
   )

@@ -1,17 +1,41 @@
 import React, { useEffect, useState } from 'react'
 import placesData from '../data/places.json'
 import { supabase } from '../supabaseClient'
+import PostForm from '../components/PostForm'
+import ProductForm from '../components/ProductForm'
+import CommentForm from '../components/CommentForm'
+import ReactionButton from '../components/ReactionButton'
+import CommentsList from '../components/CommentsList'
 
 function PostsTab({ placeId }){
   const [posts, setPosts] = useState([])
   useEffect(()=>{ async function load(){
-    const { data } = await supabase.from('posts').select('*').eq('place_id', placeId)
+    const { data } = await supabase.from('posts').select('*').eq('place_id', placeId).order('created_at', { ascending: false })
     setPosts(data || [])
-  } load() },[placeId])
+  } load();
+    const onReload = ()=> load()
+    window.addEventListener('reloadPosts', onReload)
+    return ()=> window.removeEventListener('reloadPosts', onReload)
+  },[placeId])
   return (
     <div>
+      <PostForm placeName={placeId} onPosted={()=>{ const ev = new Event('reloadPosts'); window.dispatchEvent(ev)}} />
       {posts.length===0 && <p>No posts yet.</p>}
-      {posts.map(p=> <div key={p.id} className="p-2 border mb-2">{p.content}</div>)}
+      {posts.map(p=> (
+        <div key={p.id} className="p-2 rounded bg-slate-800 mb-3">
+          <div className="mb-2">{p.content}</div>
+          {p.media_urls && p.media_urls.map((m,i)=> (
+            <div key={i} className="mb-2">
+              {m.match(/\.(mp4|webm|ogg)$/i) ? <video src={m} controls className="max-w-full" /> : <img src={m} alt="media" className="max-w-full" />}
+            </div>
+          ))}
+          <div className="mt-2 flex items-center">
+            <ReactionButton postId={p.id} />
+          </div>
+          <CommentsList postId={p.id} />
+          <CommentForm postId={p.id} onCommented={()=>{ const ev = new Event('reloadPosts'); window.dispatchEvent(ev)}} />
+        </div>
+      ))}
     </div>
   )
 }
@@ -19,13 +43,30 @@ function PostsTab({ placeId }){
 function SellTab({ placeId }){
   const [products, setProducts] = useState([])
   useEffect(()=>{ async function load(){
-    const { data } = await supabase.from('products').select('*').eq('place_id', placeId)
+    const { data } = await supabase.from('products').select('*').eq('place_id', placeId).order('created_at', { ascending: false })
     setProducts(data || [])
   } load() },[placeId])
   return (
     <div>
+      <ProductForm placeName={placeId} onCreated={()=>{ const ev = new Event('reloadProducts'); window.dispatchEvent(ev)}} />
       {products.length===0 && <p>No products listed.</p>}
-      {products.map(p=> <div key={p.id} className="p-2 border mb-2">{p.title} — {p.price}</div>)}
+      {products.map(p=> (
+        <div key={p.id} className="p-2 rounded bg-slate-800 mb-3 flex items-center justify-between">
+          <div>
+            <div className="font-semibold">{p.title}</div>
+            <div className="text-sm">{p.description}</div>
+            <div className="text-sm mt-1">Price: {p.price}</div>
+          </div>
+          <div>
+            <button onClick={async ()=>{
+              const cart = JSON.parse(localStorage.getItem('cart')||'[]')
+              cart.push({ id: p.id, title: p.title, price: p.price })
+              localStorage.setItem('cart', JSON.stringify(cart))
+              alert('Added to cart')
+            }}>Add to cart</button>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -46,7 +87,8 @@ export default function Places(){
   },[])
 
   const handleCreatePlace = async (name)=>{
-    const user = supabase.auth.user ? supabase.auth.user() : null
+    const userResp = await supabase.auth.getUser()
+    const user = userResp.data?.user
     const owner = user?.id || null
     const payload = { name, owner, created_at: new Date().toISOString() }
     await supabase.from('places').insert([payload])
