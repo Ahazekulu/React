@@ -14,7 +14,28 @@ export default function ProductForm({ placeName, onCreated }){
     if(file){
       const path = `${Date.now()}_${file.name}`
       const { data, error } = await supabase.storage.from('uploads').upload(path, file)
-      if(!error){ media.push(supabase.storage.from('uploads').getPublicUrl(data.path).publicURL) }
+      if(!error){
+        const res = supabase.storage.from('uploads').getPublicUrl(data.path)
+        let publicUrl = res?.data?.publicUrl ?? res?.publicURL ?? ''
+        if (!publicUrl) {
+          try {
+            const signed = await supabase.storage.from('uploads').createSignedUrl(data.path, 60)
+            publicUrl = signed?.data?.signedUrl ?? ''
+          } catch (err) {
+            console.error('createSignedUrl error', err)
+          }
+        }
+        media.push(publicUrl)
+      }
+    }
+    // normalize public url response for different supabase client versions
+    for (let i = 0; i < media.length; i++) {
+      const entry = media[i]
+      if (!entry) continue
+      // if entry is already a string url, keep it
+      if (typeof entry === 'string') continue
+      // otherwise try to extract publicUrl
+      media[i] = entry?.data?.publicUrl ?? entry?.publicURL ?? ''
     }
     const payload = { title, description, price: parseFloat(price)||0, media_urls: media, place_name: placeName }
     const { error } = await supabase.from('products').insert([payload])
@@ -29,16 +50,18 @@ export default function ProductForm({ placeName, onCreated }){
   }
 
   return (
-    <div className="card">
-      <form onSubmit={handleSubmit} className="space-y-2">
-        <input className="w-full p-2" placeholder="Product title" value={title} onChange={e=>setTitle(e.target.value)} />
-        <textarea className="w-full p-2" rows={2} placeholder="Description" value={description} onChange={e=>setDescription(e.target.value)} />
-        <div className="flex gap-2">
-          <input className="p-2" placeholder="Price" value={price} onChange={e=>setPrice(e.target.value)} />
+    <div className="bg-white rounded p-4 shadow">
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <input className="w-full p-2 border border-gray-200 rounded" placeholder="Product title" value={title} onChange={e=>setTitle(e.target.value)} />
+        <textarea className="w-full p-2 border border-gray-200 rounded" rows={2} placeholder="Description" value={description} onChange={e=>setDescription(e.target.value)} />
+        <div className="flex gap-2 items-center">
+          <input className="p-2 border border-gray-200 rounded w-28" placeholder="Price" value={price} onChange={e=>setPrice(e.target.value)} />
           <input type="file" accept="image/*" onChange={e=>setFile(e.target.files[0])} />
         </div>
-        <div style={{display:'flex',justifyContent:'flex-end'}}>
-          <button disabled={loading}>{loading? 'Creating...' : 'Create Product'}</button>
+        <div className="flex justify-end">
+          <button disabled={loading} className="btn btn-primary">
+            {loading? 'Creating...' : 'Create Product'}
+          </button>
         </div>
       </form>
     </div>

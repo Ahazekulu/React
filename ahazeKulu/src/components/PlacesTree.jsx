@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import placesData from '../data/places.json';
 
 // Helper function to transform flat data into a hierarchical tree
-const buildTree = (data) => {
+const buildTree = (data, filter) => {
   const tree = {};
   const rootNodes = [];
 
@@ -45,6 +45,21 @@ const buildTree = (data) => {
   
   Object.values(finalTree.children).forEach(convertChildrenToArray);
 
+  // If filter provided, prune nodes that don't match
+  if (filter && filter.trim()) {
+    const q = filter.trim().toLowerCase();
+    const filterNode = (node) => {
+      const nameMatches = node.name.toLowerCase().includes(q)
+      if (nameMatches) return true
+      if (!node.children || node.children.length === 0) return false
+      const remaining = node.children.filter(child => filterNode(child))
+      node.children = remaining
+      return remaining.length > 0
+    }
+    const roots = Object.values(finalTree.children).filter(n=> filterNode(n))
+    return roots
+  }
+
   return Object.values(finalTree.children);
 };
 
@@ -82,17 +97,18 @@ const TreeNode = ({ node, onSelect, selectedPlace }) => {
   );
 };
 
-export default function PlacesTree({ onSelect, selectedPlace }) {
+export default function PlacesTree({ onSelect, selectedPlace, filter }) {
   const [treeData, setTreeData] = useState([]);
 
   useEffect(() => {
-    const tree = buildTree(placesData);
+    const tree = buildTree(placesData, filter);
     setTreeData(tree);
-  }, []);
+  }, [filter]);
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-md">
       <h3 className="text-lg font-bold mb-2">Places</h3>
+      <div className="text-sm text-gray-600 mb-3">Browse locations — click to select</div>
       {treeData.map(node => (
         <TreeNode key={node.id} node={node} onSelect={onSelect} selectedPlace={selectedPlace} />
       ))}

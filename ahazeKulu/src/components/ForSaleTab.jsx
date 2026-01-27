@@ -49,9 +49,9 @@ export default function ForSaleTab({ placeId }){
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {products.map(p => (
-          <div key={p.id} className="bg-white rounded-lg shadow overflow-hidden">
+          <div key={p.id} className="bg-white rounded-lg shadow overflow-hidden hover:shadow-md transition">
             {p.media_urls && p.media_urls.length > 0 && (
-              <img src={p.media_urls[0]} alt={p.title} className="w-full h-48 object-cover"/>
+              <img src={p.media_urls[0]} alt={p.title} className="w-full h-44 object-cover"/>
             )}
             <div className="p-4">
               <h3 className="font-bold text-lg">{p.title}</h3>

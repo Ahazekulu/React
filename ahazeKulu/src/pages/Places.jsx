@@ -9,6 +9,7 @@ import CreatePlaceForm from '../components/CreatePlaceForm'
 export default function Places() {
   const [selectedPlace, setSelectedPlace] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [search, setSearch] = useState('')
   
   // This is a dummy key that we can change to force a re-render of the tree
   const [treeKey, setTreeKey] = useState(1); 
@@ -32,26 +33,31 @@ export default function Places() {
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-        {/* Left Column: Places Navigation */}
-        <div className="md:col-span-1">
-          <div className="sticky top-8 space-y-4">
+      <div className="flex gap-6">
+        {/* Sidebar: Places Navigation */}
+        <aside className="w-80 sticky top-8 h-[80vh] overflow-auto">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1111.292 3.707l3.853 3.853a1 1 0 01-1.414 1.414l-3.853-3.853A6 6 0 012 8z" clipRule="evenodd" /></svg>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search places" className="flex-1 p-2 border border-gray-200 rounded" />
+            </div>
             <PlacesTree
-              key={treeKey} // Use the key to force re-mount on change
+              key={treeKey}
               selectedPlace={selectedPlace}
               onSelect={handleSelectPlace}
+              filter={search}
             />
             <button
               onClick={() => setIsModalOpen(true)}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded"
             >
               Create New Place
             </button>
           </div>
-        </div>
+        </aside>
 
-        {/* Right Column: Content Display */}
-        <div className="md:col-span-3">
+        {/* Main content */}
+        <section className="flex-1">
           <div className="bg-white p-6 rounded-lg shadow-md min-h-[600px]">
             {!selectedPlace ? (
               <div className="text-center text-gray-500 flex flex-col justify-center h-full">
@@ -60,12 +66,15 @@ export default function Places() {
               </div>
             ) : (
               <div>
-                <h2 className="text-3xl font-bold mb-4">{selectedPlace.split('/').pop()}</h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-3xl font-bold">{selectedPlace.split('/').pop()}</h2>
+                  <div className="text-sm text-gray-500">{selectedPlace}</div>
+                </div>
                 <Tabs tabs={tabs} />
               </div>
             )}
           </div>
-        </div>
+        </section>
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>

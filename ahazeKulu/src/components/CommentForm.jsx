@@ -11,16 +11,24 @@ export default function CommentForm({ postId, onCommented }){
     const userResp = await supabase.auth.getUser()
     const user = userResp.data?.user
     const payload = { post_id: postId, content, user_id: user?.id }
-    await supabase.from('comments').insert([payload])
-    setContent(''); setLoading(false)
-    onCommented && onCommented()
+    const { error } = await supabase.from('comments').insert([payload])
+    if (error) {
+      console.error('comment insert error', error)
+      alert('Failed to post comment: ' + error.message)
+    } else {
+      setContent('')
+      onCommented && onCommented()
+      // notify comment lists to reload
+      try { window.dispatchEvent(new Event('reloadPosts')) } catch(e) { /* ignore */ }
+    }
+    setLoading(false)
   }
 
   return (
     <form onSubmit={submit} className="mt-2">
-      <input className="w-full p-2 text-black" placeholder="Write a comment" value={content} onChange={e=>setContent(e.target.value)} />
-      <div className="mt-2">
-        <button disabled={loading}>{loading? 'Posting...' : 'Comment'}</button>
+      <div className="flex gap-2">
+        <input className="flex-1 p-2 border border-gray-200 rounded" placeholder="Write a comment" value={content} onChange={e=>setContent(e.target.value)} />
+        <button disabled={loading} className="btn btn-primary">{loading? 'Posting...' : 'Comment'}</button>
       </div>
     </form>
   )
