@@ -19,6 +19,8 @@ const Connect = () => {
         { id: 'woreda', label: 'My Woreda', icon: <MapPin size={14} />, color: 'bg-rose-500' },
         { id: 'kebele', label: 'My Kebele', icon: <MapPin size={14} />, color: 'bg-indigo-500' },
         { id: 'community', label: 'My Community', icon: <Building2 size={14} />, color: 'bg-cyan-500' },
+        { id: 'workplace', label: 'Workplace', icon: <Building2 size={14} />, color: 'bg-slate-500' },
+        { id: 'school', label: 'My School', icon: <School size={14} />, color: 'bg-purple-500' },
     ];
 
     useEffect(() => {
@@ -95,11 +97,11 @@ const Connect = () => {
             {/* Contextual Header */}
             <div className="flex flex-col gap-2 ml-4">
                 <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 ${tabs.find(t => t.id === activeTab).color} rounded-2xl flex items-center justify-center text-white shadow-lg`}>
-                        {tabs.find(t => t.id === activeTab).icon}
+                    <div className={`w-10 h-10 ${tabs.find(t => t.id === activeTab)?.color || 'bg-dark-green'} rounded-2xl flex items-center justify-center text-white shadow-lg shadow-dark-green/10`}>
+                        {tabs.find(t => t.id === activeTab)?.icon}
                     </div>
                     <div>
-                        <h1 className="text-3xl font-black text-gray-900 tracking-tight">{tabs.find(t => t.id === activeTab).label}</h1>
+                        <h1 className="text-3xl font-black text-gray-900 tracking-tight">{tabs.find(t => t.id === activeTab)?.label}</h1>
                         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Connect with your local circle</p>
                     </div>
                 </div>
@@ -136,7 +138,7 @@ const Connect = () => {
                             <textarea
                                 value={newPostContent}
                                 onChange={(e) => setNewPostContent(e.target.value)}
-                                placeholder={`What's happening in ${tabs.find(t => t.id === activeTab).label}?`}
+                                placeholder={`What's happening in ${tabs.find(t => t.id === activeTab)?.label}?`}
                                 disabled={isPosting}
                                 className="w-full bg-gray-50/50 border-none rounded-[32px] p-8 text-base font-medium placeholder:text-gray-400 focus:ring-4 focus:ring-gray-900/5 focus:bg-white transition-all min-h-[160px] resize-none outline-none shadow-inner"
                             />
@@ -155,9 +157,16 @@ const Connect = () => {
                                 <div className="flex items-center gap-3">
                                     <label className="w-12 h-12 flex items-center justify-center bg-gray-50 text-gray-400 rounded-2xl hover:text-gray-900 hover:bg-white hover:shadow-lg transition-all active:scale-90 cursor-pointer">
                                         <Camera size={22} />
-                                        <input type="file" className="hidden" accept="image/*,video/*" onChange={(e) => {
+                                        <input type="file" className="hidden" accept="image/*" onChange={(e) => {
                                             const file = e.target.files[0];
-                                            if (file) setMedia({ file, url: URL.createObjectURL(file) });
+                                            if (file) setMedia({ file, url: URL.createObjectURL(file), type: 'image' });
+                                        }} />
+                                    </label>
+                                    <label className="w-12 h-12 flex items-center justify-center bg-gray-50 text-gray-400 rounded-2xl hover:text-gray-900 hover:bg-white hover:shadow-lg transition-all active:scale-90 cursor-pointer">
+                                        <Video size={22} />
+                                        <input type="file" className="hidden" accept="video/*" onChange={(e) => {
+                                            const file = e.target.files[0];
+                                            if (file) setMedia({ file, url: URL.createObjectURL(file), type: 'video' });
                                         }} />
                                     </label>
                                     <button className="w-12 h-12 flex items-center justify-center bg-gray-50 text-gray-400 rounded-2xl hover:text-gray-900 hover:bg-white hover:shadow-lg transition-all active:scale-90">
@@ -200,7 +209,7 @@ const Connect = () => {
                     </div>
                 ) : posts.length > 0 ? (
                     posts.map((post, i) => (
-                        <PostCard key={post.id} post={post} index={i} />
+                        <PostCard key={post.id} post={post} index={i} user={user} />
                     ))
                 ) : (
                     <div className="py-32 text-center bg-white rounded-[48px] border-2 border-dashed border-gray-100 flex flex-col items-center gap-6">
@@ -218,7 +227,7 @@ const Connect = () => {
     );
 };
 
-const PostCard = ({ post, index }) => {
+const PostCard = ({ post, index, user }) => {
     return (
         <div
             className="bg-white rounded-[56px] p-10 md:p-12 shadow-xl shadow-gray-100 border border-gray-100 hover:shadow-2xl hover:shadow-gray-200/50 transition-all group animate-in slide-in-from-bottom-8 duration-700"
@@ -250,9 +259,25 @@ const PostCard = ({ post, index }) => {
                         </div>
                     </div>
                 </div>
-                <button className="w-10 h-10 flex items-center justify-center text-gray-300 hover:text-gray-900 hover:bg-gray-50 rounded-2xl transition-all">
-                    <MoreHorizontal size={24} />
-                </button>
+
+                <div className="relative group/menu">
+                    <button className="w-10 h-10 flex items-center justify-center text-gray-300 hover:text-gray-900 hover:bg-gray-50 rounded-2xl transition-all">
+                        <MoreHorizontal size={24} />
+                    </button>
+                    <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-3xl shadow-2xl border border-gray-100 p-2 hidden group-hover/menu:block z-20 animate-in zoom-in-95">
+                        {user?.id === post.author_id ? (
+                            <>
+                                <button className="w-full text-left p-3 text-xs font-black text-gray-700 hover:bg-gray-50 rounded-2xl transition-all">Edit Post</button>
+                                <button className="w-full text-left p-3 text-xs font-black text-red-500 hover:bg-red-50 rounded-2xl transition-all">Delete Post</button>
+                            </>
+                        ) : (
+                            <>
+                                <button className="w-full text-left p-3 text-xs font-black text-gray-700 hover:bg-gray-50 rounded-2xl transition-all">Hide Post</button>
+                                <button className="w-full text-left p-3 text-xs font-black text-gray-700 hover:bg-gray-50 rounded-2xl transition-all">Report Content</button>
+                            </>
+                        )}
+                    </div>
+                </div>
             </div>
 
             {/* Content */}
@@ -279,7 +304,7 @@ const PostCard = ({ post, index }) => {
                         <div className="w-11 h-11 rounded-2xl bg-gray-50 group-hover/btn:bg-red-50 flex items-center justify-center transition-colors">
                             <Heart size={22} className="group-hover/btn:fill-accent-red transition-all" />
                         </div>
-                        <span className="group-hover/btn:text-gray-900 transition-colors">1.2k</span>
+                        <span className="group-hover/btn:text-gray-900 transition-colors">{post.likes_count || 0}</span>
                     </button>
                     <button className="flex items-center gap-3 text-[13px] font-black text-gray-400 hover:text-blue-500 transition-all group/btn active:scale-90">
                         <div className="w-11 h-11 rounded-2xl bg-gray-50 group-hover/btn:bg-blue-50 flex items-center justify-center transition-colors">
@@ -294,9 +319,14 @@ const PostCard = ({ post, index }) => {
                         <span className="group-hover/btn:text-gray-900 transition-colors">Share</span>
                     </button>
                 </div>
-                <button className="w-12 h-12 flex items-center justify-center text-gray-300 hover:text-amber-500 bg-gray-50 hover:bg-amber-50 rounded-2xl transition-all shadow-sm active:scale-90">
-                    <Bookmark size={24} />
-                </button>
+                <div className="flex items-center gap-3">
+                    <button className="w-12 h-12 flex items-center justify-center text-gray-300 hover:text-emerald-500 bg-gray-50 hover:bg-emerald-50 rounded-2xl transition-all shadow-sm active:scale-90">
+                        <Download size={22} />
+                    </button>
+                    <button className="w-12 h-12 flex items-center justify-center text-gray-300 hover:text-amber-500 bg-gray-50 hover:bg-amber-50 rounded-2xl transition-all shadow-sm active:scale-90">
+                        <Bookmark size={22} />
+                    </button>
+                </div>
             </div>
         </div>
     );

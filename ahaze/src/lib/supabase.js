@@ -8,19 +8,25 @@ export { supabase };
  * @param {string} bucket - The bucket name (e.g. 'products', 'posts', 'orgs')
  * @param {string} userId - Current user ID for folder organization
  */
-export const uploadMedia = async (file, bucket, userId) => {
+export const uploadMedia = async (file, folder, userId) => {
     if (!file) return null;
 
     try {
+        const bucket = 'ahaze-media'; // Consolidated bucket for all media
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random().toString(36).slice(2)}_${Date.now()}.${fileExt}`;
-        const filePath = `${userId}/${fileName}`;
+        const filePath = `${folder}/${userId}/${fileName}`; // Folder-based structure
+
+        console.log(`[Storage Debug] Uploading to bucket: "${bucket}", path: "${filePath}"`);
 
         const { error: uploadError } = await supabase.storage
             .from(bucket)
             .upload(filePath, file);
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+            console.error(`[Storage Error] ${uploadError.message}`, uploadError);
+            throw uploadError;
+        }
 
         const { data: { publicUrl } } = supabase.storage
             .from(bucket)
@@ -28,7 +34,7 @@ export const uploadMedia = async (file, bucket, userId) => {
 
         return publicUrl;
     } catch (err) {
-        console.error(`Upload error in bucket ${bucket}:`, err);
+        console.error(`[Storage Failure] Path "${folder}/${userId}":`, err);
         throw err;
     }
 };

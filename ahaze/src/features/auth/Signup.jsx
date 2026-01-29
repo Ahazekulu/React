@@ -237,7 +237,11 @@ const Signup = () => {
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Mender (Optional)</label>
-                                <input name="mender" value={formData.mender} onChange={handleChange} className="w-full border-gray-200 rounded-lg p-2 bg-gray-50" />
+                                <input name="mender" value={formData.mender} onChange={handleChange} className="w-full border-gray-200 rounded-lg p-2 bg-gray-50 mb-2" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Building (Optional)</label>
+                                <input name="building" value={formData.building} onChange={handleChange} className="w-full border-gray-200 rounded-lg p-2 bg-gray-50" />
                             </div>
                         </div>
                     </section>

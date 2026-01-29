@@ -1,30 +1,58 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Search, Filter, Users, Star, GraduationCap, Atom, Book, Globe, Heart, MessageSquare, Share2, Bookmark, Download, Loader2 } from 'lucide-react';
+import { BookOpen, Search, Filter, Users, Star, GraduationCap, Atom, Book, Globe, Heart, MessageSquare, Share2, Bookmark, Download, Loader2, Sparkles, TrendingUp, Flag, MapPin, Building2, ShoppingBag, Landmark, Calendar, History, Zap, Camera, Mic, Home, Clock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 const Knowledge = () => {
-    const [activeTab, setActiveTab] = useState('posts');
+    const [activeTab, setActiveTab] = useState('new');
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [articles, setArticles] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
 
     const tabs = [
-        { id: 'posts', label: 'Knowledge Posts', icon: <BookOpen size={16} /> },
-        { id: 'follow', label: 'You Follow', icon: <Users size={16} /> },
+        { id: 'new', label: 'New', icon: <Sparkles size={16} /> },
+        { id: 'trends', label: 'Trends', icon: <TrendingUp size={16} /> },
+        { id: 'country', label: 'Country', icon: <Flag size={16} /> },
+        { id: 'region', label: 'Region', icon: <Globe size={16} /> },
+        { id: 'zone', label: 'Zone', icon: <MapPin size={16} /> },
+        { id: 'woreda', label: 'Woreda', icon: <MapPin size={16} /> },
+        { id: 'kebele', label: 'Kebele', icon: <MapPin size={16} /> },
+        { id: 'community', label: 'Community', icon: <Building2 size={16} /> },
+        { id: 'market', label: 'Marketplace', icon: <ShoppingBag size={16} /> },
+        { id: 'orgs', label: 'Organizations', icon: <Landmark size={16} /> },
+        { id: 'academic', label: 'Academic Events', icon: <Calendar size={16} /> },
     ];
 
     const categories = [
         { name: 'All', icon: <Globe size={14} /> },
-        { name: 'Science & Engineering', icon: <Atom size={14} /> },
-        { name: 'Philosophy', icon: <GraduationCap size={14} /> },
         { name: 'Religion', icon: <Book size={14} /> },
-        { name: 'History', icon: <BookOpen size={14} /> },
+        { name: 'History', icon: <History size={14} /> },
+        { name: 'Philosophy', icon: <GraduationCap size={14} /> },
+        { name: 'Science & Engineering', icon: <Atom size={14} /> },
+        { name: 'Agriculture', icon: <Zap size={14} /> },
+        { name: 'Manufacturing', icon: <Building2 size={14} /> },
+        { name: 'Art', icon: <Camera size={14} /> },
+        { name: 'Music', icon: <Mic size={14} /> },
+        { name: 'Health', icon: <Heart size={14} /> },
+        { name: 'Leadership & Politics', icon: <Landmark size={14} /> },
+        { name: 'Business & Trading', icon: <ShoppingBag size={14} /> },
+        { name: 'IT & Tech', icon: <Zap size={14} /> },
+        { name: 'Nature & Environment', icon: <Globe size={14} /> },
+        { name: 'Tourism', icon: <MapPin size={14} /> },
+        { name: 'Archeology', icon: <Clock size={14} /> },
+        { name: 'Teaching', icon: <BookOpen size={14} /> },
+        { name: 'Home Making', icon: <Home size={14} /> },
+        { name: 'Architecture', icon: <Landmark size={14} /> },
+        { name: 'Civil & Town Living', icon: <Users size={14} /> },
+        { name: 'Construction', icon: <Building2 size={14} /> },
+        { name: 'Language', icon: <MessageSquare size={14} /> },
+        { name: 'Physical & Math', icon: <Atom size={14} /> },
+        { name: 'Sports', icon: <Zap size={14} /> },
     ];
 
     useEffect(() => {
         fetchArticles();
-    }, [selectedCategory, searchQuery]);
+    }, [selectedCategory, searchQuery, activeTab]);
 
     const fetchArticles = async () => {
         setLoading(true);
@@ -44,6 +72,16 @@ const Knowledge = () => {
                 query = query.ilike('title', `%${searchQuery}%`);
             }
 
+            // Simple scoping logic based on tab
+            // This section would be expanded to filter articles based on activeTab (e.g., 'new', 'trends', 'country', etc.)
+            // For example:
+            // if (activeTab === 'new') {
+            //     query = query.order('created_at', { ascending: false });
+            // } else if (activeTab === 'trends') {
+            //     query = query.order('views', { ascending: false }); // Assuming a 'views' column
+            // }
+            // ... and so on for other tabs
+
             const { data, error } = await query.order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -59,7 +97,7 @@ const Knowledge = () => {
         <div className="flex flex-col lg:flex-row gap-8 animate-in fade-in duration-700">
             {/* Sidebar */}
             <aside className="w-full lg:w-72 flex flex-col gap-8">
-                <div className="bg-white rounded-[40px] p-8 shadow-sm border border-gray-100">
+                <div className="bg-white rounded-[40px] p-8 shadow-sm border border-gray-100 max-h-[800px] overflow-y-auto no-scrollbar">
                     <h3 className="text-[10px] font-black uppercase text-gray-400 mb-6 tracking-[0.2em]">Knowledge Hub</h3>
                     <div className="relative mb-8">
                         <input
@@ -78,34 +116,13 @@ const Knowledge = () => {
                             <button
                                 key={cat.name}
                                 onClick={() => setSelectedCategory(cat.name)}
-                                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-xs font-black transition-all active:scale-95 ${selectedCategory === cat.name
+                                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-[11px] font-black transition-all active:scale-95 ${selectedCategory === cat.name
                                     ? 'bg-accent-red text-white shadow-lg shadow-accent-red/20 -translate-y-1'
                                     : 'text-gray-500 hover:bg-gray-50 hover:text-accent-red'
                                     }`}
                             >
                                 {cat.icon} {cat.name}
                             </button>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="bg-white rounded-[40px] p-8 shadow-sm border border-gray-100">
-                    <h3 className="text-[10px] font-black uppercase text-gray-400 mb-6 tracking-[0.2em]">Top Scholars</h3>
-                    <div className="space-y-6">
-                        {[
-                            { name: 'Dr. Engineering Seleshi', field: 'Hydraulics' },
-                            { name: 'Prof. Daniel Kibret', field: 'Sociology' },
-                            { name: 'Uztaz Ahmedin', field: 'Religion' }
-                        ].map(t => (
-                            <div key={t.name} className="flex items-center gap-4 group cursor-pointer">
-                                <div className="w-12 h-12 bg-accent-red/5 rounded-2xl flex items-center justify-center text-accent-red group-hover:bg-accent-red group-hover:text-white transition-all">
-                                    <GraduationCap size={20} />
-                                </div>
-                                <div>
-                                    <p className="text-xs font-black text-gray-900 group-hover:text-accent-red transition-colors">{t.name}</p>
-                                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">{t.field}</p>
-                                </div>
-                            </div>
                         ))}
                     </div>
                 </div>

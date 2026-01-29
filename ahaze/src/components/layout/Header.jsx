@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, User, MapPin, MessageSquare, ShoppingBag, Landmark, BookOpen, Clock, ChevronDown, Bell } from 'lucide-react';
+import { Search, User, MapPin, MessageSquare, ShoppingBag, Landmark, BookOpen, Clock, ChevronDown, Bell, Info } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -20,11 +20,13 @@ const Header = () => {
     }, []);
 
     const navItems = [
-        { name: 'Places', path: '/places', icon: <MapPin size={14} /> },
-        { name: 'Connect', path: '/connect', icon: <MessageSquare size={14} /> },
-        { name: 'Market', path: '/market', icon: <ShoppingBag size={14} /> },
-        { name: 'Organizations', path: '/organizations', icon: <Landmark size={14} /> },
-        { name: 'Knowledge', path: '/knowledge', icon: <BookOpen size={14} /> },
+        { name: 'ahazePlaces', path: '/places', icon: <MapPin size={14} /> },
+        { name: 'ahazeConnect', path: '/connect', icon: <MessageSquare size={14} /> },
+        { name: 'ahazeMarket', path: '/market', icon: <ShoppingBag size={14} /> },
+        { name: 'ahazeOrganizations', path: '/organizations', icon: <Landmark size={14} /> },
+        { name: 'ahazeKnowledge', path: '/knowledge', icon: <BookOpen size={14} /> },
+        { name: 'Know us', path: '/know-us', icon: <Info size={14} /> },
+        { name: 'Contact us', path: '/contact', icon: <MessageSquare size={14} /> },
     ];
 
     return (
@@ -83,8 +85,11 @@ const Header = () => {
                         {/* Status Bar */}
                         <div className="hidden lg:flex flex-col items-end gap-1">
                             <div className="flex items-center gap-2 text-xs font-black text-gray-900">
+                                <span className="text-dark-green opacity-40 uppercase tracking-tighter mr-2">
+                                    {location.pathname === '/' ? 'Home' : navItems.find(n => n.path === location.pathname)?.name || 'Page'}
+                                </span>
                                 <Clock size={14} className="text-dark-green" />
-                                {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                             </div>
                             <div className="flex items-center gap-1.5">
                                 <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, Award, ShoppingCart, Briefcase, ExternalLink, Star, ChevronRight, Users, MapPin, ShoppingBag, Zap, Flame, Crown } from 'lucide-react';
+import { TrendingUp, Award, ShoppingCart, Briefcase, ExternalLink, Star, ChevronRight, Users, MapPin, ShoppingBag, Zap, Flame, Crown, BookOpen } from 'lucide-react';
 
-const RightSidebar = () => {
+const RightSidebar = () => { // Force reload
     const [currentAd, setCurrentAd] = useState(0);
     const ads = [
         { id: 1, title: 'Fly Ethiopian', desc: 'The New Spirit of Africa. Experience world-class hospitality on your next journey.', color: 'bg-[#1b4332]', cta: 'Book Flight' },
@@ -55,14 +55,49 @@ const RightSidebar = () => {
                 <section>
                     <div className="flex items-center gap-2 mb-6 ml-2">
                         <Flame size={14} className="text-accent-red" />
-                        <h3 className="text-[10px] font-black uppercase text-gray-400 tracking-[0.3em]">Trending Now</h3>
+                        <h3 className="text-[10px] font-black uppercase text-gray-400 tracking-[0.3em]">Top Performers</h3>
                     </div>
 
-                    <div className="space-y-2">
-                        <TrendingCard icon={<Users className="text-dark-green" />} title="Influencers" name="Ato Belay" growth="+24%" value="1.2M Citizens" />
-                        <TrendingCard icon={<MapPin className="text-light-blue" />} title="Locations" name="Lalibela" growth="+12%" value="450k Love" />
-                        <TrendingCard icon={<ShoppingBag className="text-amber-500" />} title="Marketplace" name="Premium Coffee" growth="+38%" value="2.5k Sales" />
-                        <TrendingCard icon={<Briefcase className="text-gray-900" />} title="Organizations" name="Ethio Telecom" growth="+5%" value="Active" />
+                    <div className="space-y-10">
+                        {/* 1. People */}
+                        <div className="space-y-3">
+                            <p className="text-[8px] font-black text-gray-300 uppercase tracking-widest ml-4">Top 3 Citizens</p>
+                            <TrendingCard icon={<Users className="text-dark-green" />} title="Citizen" name="Ato Belay" value="1.2M Citizens" />
+                            <TrendingCard icon={<Users className="text-dark-green" />} title="Citizen" name="Lomi Tadesse" value="980k Citizens" />
+                            <TrendingCard icon={<Users className="text-dark-green" />} title="Citizen" name="Kebede Ali" value="850k Citizens" />
+                        </div>
+
+                        {/* 2. Places */}
+                        <div className="space-y-3">
+                            <p className="text-[8px] font-black text-gray-300 uppercase tracking-widest ml-4">Top 3 Places</p>
+                            <TrendingCard icon={<MapPin className="text-light-blue" />} title="Place" name="Lalibela" value="450k Love" />
+                            <TrendingCard icon={<MapPin className="text-light-blue" />} title="Place" name="Axum" value="420k Love" />
+                            <TrendingCard icon={<MapPin className="text-light-blue" />} title="Place" name="Gonder" value="390k Love" />
+                        </div>
+
+                        {/* 3. Products */}
+                        <div className="space-y-3">
+                            <p className="text-[8px] font-black text-gray-300 uppercase tracking-widest ml-4">Top 3 Products</p>
+                            <TrendingCard icon={<ShoppingBag className="text-amber-500" />} title="Product" name="Yirgacheffe Coffee" value="2.5k Sales" />
+                            <TrendingCard icon={<ShoppingBag className="text-amber-500" />} title="Product" name="Habesha Dress" value="1.8k Sales" />
+                            <TrendingCard icon={<ShoppingBag className="text-amber-500" />} title="Product" name="Teff Flour" value="1.5k Sales" />
+                        </div>
+
+                        {/* 4. Organizations */}
+                        <div className="space-y-3">
+                            <p className="text-[8px] font-black text-gray-300 uppercase tracking-widest ml-4">Top 3 Organizations</p>
+                            <TrendingCard icon={<Briefcase className="text-gray-900" />} title="Org" name="Ethio Telecom" value="95% Service" />
+                            <TrendingCard icon={<Briefcase className="text-gray-900" />} title="Org" name="CBE" value="92% Service" />
+                            <TrendingCard icon={<Briefcase className="text-gray-900" />} title="Org" name="Ethiopian Airlines" value="90% Service" />
+                        </div>
+
+                        {/* 5. Teachers */}
+                        <div className="space-y-3">
+                            <p className="text-[8px] font-black text-gray-300 uppercase tracking-widest ml-4">Top 3 Teachers</p>
+                            <TrendingCard icon={<BookOpen className="text-emerald-500" />} title="Teacher" name="Dr. Solomon" value="12k Students" />
+                            <TrendingCard icon={<BookOpen className="text-emerald-500" />} title="Teacher" name="W/ro Martha" value="10k Students" />
+                            <TrendingCard icon={<BookOpen className="text-emerald-500" />} title="Teacher" name="Ato Yohannes" value="8k Students" />
+                        </div>
                     </div>
                 </section>
 
