@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+:root {
+  /* Branding Colors */
+  --color-primary: #006600; /* Dark Green */
+  --color-secondary: #1E90FF; /* Light Blue */
+  --color-accent-red: #da251d; /* Ethiopian Red */
+  --color-accent-yellow: #fcd116; /* Ethiopian Yellow */
+  
+  --bg-primary: #f8fafc;
+  --text-primary: #0f172a;
+  
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+/* Custom Utilities */
+@layer utilities {
+  .bg-dark-green { background-color: var(--color-primary); }
+  .text-dark-green { color: var(--color-primary); }
+  .bg-light-blue { background-color: var(--color-secondary); }
+  .text-light-blue { color: var(--color-secondary); }
+}
+
