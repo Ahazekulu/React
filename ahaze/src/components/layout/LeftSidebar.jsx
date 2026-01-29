@@ -1,12 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { Search, PlusCircle, ChevronRight, MapPin, ChevronDown, Filter, X, Upload, Home, Globe, Compass } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
 import placesData from '../../data/places.json';
 
 const LeftSidebar = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [expanded, setExpanded] = useState({});
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [newPlace, setNewPlace] = useState({ region: '', zone: '', woreda: '', level: 'Zone', name: '' });
     const location = useLocation();
 
     const toggleExpand = (id, e) => {
@@ -14,12 +16,45 @@ const LeftSidebar = () => {
         setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
+    const navigate = useNavigate();
+
     const handleSelectPlace = (place) => {
-        console.log("Selected Place:", place);
+        // Construct query params based on the place level
+        const params = new URLSearchParams();
+        if (place["Level 2"]) params.set('region', place["Level 2"]);
+        if (place["Level 3"]) params.set('zone', place["Level 3"]);
+        if (place["Level 4"]) params.set('woreda', place["Level 4"]);
+        if (place["Level 5"]) params.set('kebele', place["Level 5"]);
+
+        // If it's a simple name object (from tree view)
+        if (place.name && !place["Level 2"]) {
+            // Try to infer or just set basic name if logic allows, 
+            // but for now let's assume standard placesData object for search
+            // For tree view which passes {name: ...}, we might need to be smarter.
+            // Let's rely on the search result full object for best accuracy.
+        }
+
+        navigate(`/places?${params.toString()}`);
+    };
+
+    const handleSubmitPlace = async () => {
+        if (!newPlace.level || !newPlace.name) return alert("Please fill in required fields (Level and Name)");
+
+        const { error } = await supabase.from('place_requests').insert([{
+            ...newPlace,
+            status: 'pending'
+        }]);
+
+        if (error) {
+            alert("Error submitting request: " + error.message);
+        } else {
+            alert("Location submitted for verification! Thank you.");
+            setIsAddModalOpen(false);
+            setNewPlace({ region: '', zone: '', woreda: '', level: 'Zone', name: '' });
+        }
     };
 
     const regions = useMemo(() => [...new Set(placesData.map(p => p["Level 2"]))].sort(), []);
-
     const getZones = (region) => [...new Set(placesData.filter(p => p["Level 2"] === region).map(p => p["Level 3"]))].sort();
     const getWoredas = (region, zone) => [...new Set(placesData.filter(p => p["Level 2"] === region && p["Level 3"] === zone).map(p => p["Level 4"]))].sort();
 
@@ -37,7 +72,7 @@ const LeftSidebar = () => {
 
     return (
         <>
-            <aside className="w-[300px] h-[calc(100vh-80px)] sticky top-20 hidden xxl:flex flex-col gap-8 p-8 overflow-y-auto no-scrollbar">
+            <aside className="w-[300px] h-[calc(100vh-80px)] sticky top-20 hidden lg:flex flex-col gap-8 p-8 overflow-y-auto no-scrollbar">
 
                 {/* Global Explore */}
                 <div className="space-y-3">
@@ -71,12 +106,33 @@ const LeftSidebar = () => {
                         {searchQuery ? (
                             <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
                                 <div className="space-y-2">
-                                    {searchResults.length > 0 ? searchResults.map((p, i) => (
-                                        <button key={i} onClick={() => handleSelectPlace(p)} className="w-full text-left p-3.5 bg-white border border-gray-100 rounded-2xl hover:border-dark-green/30 hover:shadow-lg hover:shadow-dark-green/5 transition-all group active:scale-95">
-                                            <p className="text-[11px] font-black text-gray-800 group-hover:text-dark-green truncate">{p["Level 5"] || p["Level 4"]}</p>
-                                            <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter mt-1">{p["Level 2"]} {p["Level 3"] ? `> ${p["Level 3"]}` : ''}</p>
-                                        </button>
-                                    )) : (
+                                    {searchResults.length > 0 ? searchResults.map((p, i) => {
+                                        // Determine relevant level for display
+                                        let mainText = "";
+                                        let subText = "";
+                                        const q = searchQuery.toLowerCase();
+
+                                        if (p["Level 5"]?.toLowerCase().includes(q)) {
+                                            mainText = `${p["Level 5"]} is a Kebele`;
+                                            subText = `in ${p["Level 4"]}, ${p["Level 3"]}`;
+                                        } else if (p["Level 4"]?.toLowerCase().includes(q)) {
+                                            mainText = `${p["Level 4"]} is a Woreda`;
+                                            subText = `in ${p["Level 3"]}, ${p["Level 2"]}`;
+                                        } else if (p["Level 3"]?.toLowerCase().includes(q)) {
+                                            mainText = `${p["Level 3"]} is a Zone`;
+                                            subText = `in ${p["Level 2"]}`;
+                                        } else {
+                                            mainText = `${p["Level 2"]} is a Region`;
+                                            subText = "Ethiopia";
+                                        }
+
+                                        return (
+                                            <button key={i} onClick={() => handleSelectPlace(p)} className="w-full text-left p-3.5 bg-white border border-gray-100 rounded-2xl hover:border-dark-green/30 hover:shadow-lg hover:shadow-dark-green/5 transition-all group active:scale-95">
+                                                <p className="text-[11px] font-black text-gray-800 group-hover:text-dark-green truncate">{mainText}</p>
+                                                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter mt-1">{subText}</p>
+                                            </button>
+                                        );
+                                    }) : (
                                         <div className="text-center py-10">
                                             <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3"><X className="text-gray-300" size={20} /></div>
                                             <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">No Matches</p>
@@ -117,7 +173,7 @@ const LeftSidebar = () => {
                 </button>
             </aside>
 
-            {/* Modal - keeping it similar but improved styling */}
+            {/* Modal - Dynamic Place Addition */}
             {isAddModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
                     <div className="bg-white rounded-[48px] w-full max-w-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500">
@@ -131,32 +187,74 @@ const LeftSidebar = () => {
                         <div className="p-10 space-y-8">
                             <div className="grid grid-cols-2 gap-6">
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-2">Region/City</label>
-                                    <input type="text" placeholder="e.g. Oromia" className="w-full bg-gray-50 p-4 rounded-2xl border-none focus:ring-4 focus:ring-dark-green/5 focus:bg-white outline-none text-gray-900 font-bold" />
+                                    <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-2">Place Level</label>
+                                    <select
+                                        value={newPlace.level}
+                                        onChange={(e) => setNewPlace({ ...newPlace, level: e.target.value })}
+                                        className="w-full bg-gray-50 p-4 rounded-2xl border-none focus:ring-4 focus:ring-dark-green/5 focus:bg-white outline-none text-gray-900 font-bold"
+                                    >
+                                        <option value="Region">Region</option>
+                                        <option value="Zone">Zone / Subcity</option>
+                                        <option value="Woreda">Woreda</option>
+                                        <option value="Kebele">Kebele</option>
+                                    </select>
                                 </div>
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-2">Place Level</label>
-                                    <select className="w-full bg-gray-50 p-4 rounded-2xl border-none focus:ring-4 focus:ring-dark-green/5 focus:bg-white outline-none text-gray-900 font-bold">
-                                        <option>Zone / Subcity</option>
-                                        <option>Woreda</option>
-                                        <option>Kebele / Town</option>
+                                    <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-2">Parent Region</label>
+                                    <select
+                                        value={newPlace.region}
+                                        onChange={(e) => setNewPlace({ ...newPlace, region: e.target.value })}
+                                        className="w-full bg-gray-50 p-4 rounded-2xl border-none focus:ring-4 focus:ring-dark-green/5 focus:bg-white outline-none text-gray-900 font-bold"
+                                    >
+                                        <option value="">Select Region</option>
+                                        {regions.map(r => <option key={r} value={r}>{r}</option>)}
                                     </select>
                                 </div>
                             </div>
+
+                            {/* Dynamic Parent Selectors */}
+                            {(newPlace.level === 'Woreda' || newPlace.level === 'Kebele') && (
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-2">Parent Zone</label>
+                                    <select
+                                        value={newPlace.zone}
+                                        onChange={(e) => setNewPlace({ ...newPlace, zone: e.target.value })}
+                                        disabled={!newPlace.region}
+                                        className="w-full bg-gray-50 p-4 rounded-2xl border-none focus:ring-4 focus:ring-dark-green/5 focus:bg-white outline-none text-gray-900 font-bold"
+                                    >
+                                        <option value="">Select Zone</option>
+                                        {newPlace.region && getZones(newPlace.region).map(z => <option key={z} value={z}>{z}</option>)}
+                                    </select>
+                                </div>
+                            )}
+
+                            {newPlace.level === 'Kebele' && (
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-2">Parent Woreda</label>
+                                    <select
+                                        value={newPlace.woreda}
+                                        onChange={(e) => setNewPlace({ ...newPlace, woreda: e.target.value })}
+                                        disabled={!newPlace.zone}
+                                        className="w-full bg-gray-50 p-4 rounded-2xl border-none focus:ring-4 focus:ring-dark-green/5 focus:bg-white outline-none text-gray-900 font-bold"
+                                    >
+                                        <option value="">Select Woreda</option>
+                                        {newPlace.zone && getWoredas(newPlace.region, newPlace.zone).map(w => <option key={w} value={w}>{w}</option>)}
+                                    </select>
+                                </div>
+                            )}
+
                             <div className="space-y-3">
                                 <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-2">Location Name</label>
-                                <input type="text" placeholder="Enter the official name..." className="w-full bg-gray-50 p-5 rounded-2xl border-none focus:ring-4 focus:ring-dark-green/5 focus:bg-white outline-none text-gray-900 font-black shadow-sm" />
+                                <input
+                                    type="text"
+                                    value={newPlace.name}
+                                    onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })}
+                                    placeholder={`Name of the ${newPlace.level}...`}
+                                    className="w-full bg-gray-50 p-5 rounded-2xl border-none focus:ring-4 focus:ring-dark-green/5 focus:bg-white outline-none text-gray-900 font-black shadow-sm"
+                                />
                             </div>
-                            <div className="space-y-3">
-                                <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest ml-2">Visual Reference</label>
-                                <div className="border-2 border-dashed border-gray-100 rounded-[32px] p-12 flex flex-col items-center justify-center gap-4 hover:border-dark-green/20 hover:bg-gray-50 transition-all cursor-pointer group">
-                                    <div className="w-16 h-16 bg-gray-50 group-hover:bg-dark-green group-hover:text-white rounded-3xl flex items-center justify-center transition-all shadow-sm">
-                                        <Upload size={32} />
-                                    </div>
-                                    <span className="text-[11px] font-black uppercase tracking-widest text-gray-400">Click to Upload Landmark</span>
-                                </div>
-                            </div>
-                            <button className="w-full bg-gray-900 text-white py-5 rounded-[24px] font-black text-sm shadow-2xl shadow-gray-200 hover:bg-dark-green hover:shadow-dark-green/20 hover:-translate-y-1 transition-all active:scale-95 uppercase tracking-[0.2em]">Submit for verification</button>
+
+                            <button onClick={handleSubmitPlace} className="w-full bg-gray-900 text-white py-5 rounded-[24px] font-black text-sm shadow-2xl shadow-gray-200 hover:bg-dark-green hover:shadow-dark-green/20 hover:-translate-y-1 transition-all active:scale-95 uppercase tracking-[0.2em]">Submit for verification</button>
                         </div>
                     </div>
                 </div>
