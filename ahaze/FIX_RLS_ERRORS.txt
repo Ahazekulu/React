@@ -1,0 +1,49 @@
+╔═══════════════════════════════════════════════════════════════╗
+║                  FIX RLS & FOREIGN KEY ERRORS                 ║
+╚═══════════════════════════════════════════════════════════════╝
+
+🔴 ERROR 1: "new row violates row-level security policy for table 'profiles'"
+🔴 ERROR 2: "violates foreign key constraint 'connect_posts_author_id_fkey'"
+
+✅ SOLUTION - Run this SQL:
+
+═══════════════════════════════════════════════════════════════
+
+STEP 1: Open Supabase SQL Editor
+https://supabase.com/dashboard/project/uphdtxmreujnpatbyaoa/sql
+
+STEP 2: Copy and run this file:
+d:\myFiles\001ahazeKulu\00 Codes\React\ahaze\supabase\fix_rls_policies.sql
+
+STEP 3: Also disable email confirmation (IMPORTANT!)
+Go to: https://supabase.com/dashboard/project/uphdtxmreujnpatbyaoa/auth/providers
+
+Find "Email" provider settings and:
+  ✓ DISABLE "Confirm email"
+  ✓ Click "Save"
+
+═══════════════════════════════════════════════════════════════
+
+WHAT THIS FIXES:
+
+1. Makes RLS policies more permissive for signup
+2. Auto-creates profiles when posting (prevents foreign key errors)
+3. Allows users to sign up without email confirmation
+
+═══════════════════════════════════════════════════════════════
+
+AFTER RUNNING:
+
+✅ Signup will work immediately (no email confirmation needed)
+✅ Posting will work (auto-creates profile if missing)
+✅ All features functional
+
+═══════════════════════════════════════════════════════════════
+
+ALTERNATIVE: If you want to keep the trigger approach from setup_database.sql
+
+The trigger should auto-create profiles, but it might not be working.
+The fix_rls_policies.sql adds backup triggers to ensure profiles exist
+before any insert that requires them.
+
+═══════════════════════════════════════════════════════════════

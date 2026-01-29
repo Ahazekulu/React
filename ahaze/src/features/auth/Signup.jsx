@@ -91,6 +91,11 @@ const Signup = () => {
             if (authError) throw authError;
 
             if (authData.user) {
+                // Determine final address values (use custom if ADD_NEW selected)
+                const finalZone = formData.zone === 'ADD_NEW' ? formData.customZone : formData.zone;
+                const finalWoreda = formData.woreda === 'ADD_NEW' ? formData.customWoreda : formData.woreda;
+                const finalKebele = formData.kebele === 'ADD_NEW' ? formData.customKebele : formData.kebele;
+
                 // 2. Create Profile in 'profiles' table
                 const { error: profileError } = await supabase
                     .from('profiles')
@@ -102,9 +107,14 @@ const Signup = () => {
                         mobile_number: formData.mobileNumber,
                         gender: formData.gender,
                         region: formData.region,
-                        zone: formData.zone,
-                        woreda: formData.woreda,
-                        kebele: formData.kebele,
+                        zone: finalZone,
+                        woreda: finalWoreda,
+                        kebele: finalKebele,
+                        mender: formData.mender,
+                        building: formData.building,
+                        security_question: formData.securityQuestion,
+                        security_hint: formData.securityHint,
+                        suggestion: formData.suggestion,
                         updated_at: new Date().toISOString(),
                     });
 
@@ -194,24 +204,36 @@ const Signup = () => {
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Zone | Subcity *</label>
-                                <select required name="zone" value={formData.zone} onChange={handleChange} className="w-full border-gray-200 rounded-lg p-2 bg-gray-50" disabled={!formData.region}>
+                                <select required name="zone" value={formData.zone} onChange={handleChange} className="w-full border-gray-200 rounded-lg p-2 bg-gray-50 mb-2" disabled={!formData.region}>
                                     <option value="">Select Zone</option>
                                     {zones.map(z => <option key={z} value={z}>{z}</option>)}
+                                    <option value="ADD_NEW">+ Add Zone/Subcity</option>
                                 </select>
+                                {formData.zone === 'ADD_NEW' && (
+                                    <input required placeholder="Enter Zone/Subcity Name" name="customZone" value={formData.customZone || ''} onChange={handleChange} className="w-full border-gray-200 rounded-lg p-2 bg-white ring-2 ring-dark-green outline-none" />
+                                )}
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Woreda *</label>
-                                <select required name="woreda" value={formData.woreda} onChange={handleChange} className="w-full border-gray-200 rounded-lg p-2 bg-gray-50" disabled={!formData.zone}>
+                                <select required name="woreda" value={formData.woreda} onChange={handleChange} className="w-full border-gray-200 rounded-lg p-2 bg-gray-50 mb-2" disabled={!formData.zone || formData.zone === 'ADD_NEW'}>
                                     <option value="">Select Woreda</option>
                                     {woredas.map(w => <option key={w} value={w}>{w}</option>)}
+                                    <option value="ADD_NEW">+ Add Woreda</option>
                                 </select>
+                                {formData.woreda === 'ADD_NEW' && (
+                                    <input required placeholder="Enter Woreda Name" name="customWoreda" value={formData.customWoreda || ''} onChange={handleChange} className="w-full border-gray-200 rounded-lg p-2 bg-white ring-2 ring-dark-green outline-none" />
+                                )}
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Kebele *</label>
-                                <select required name="kebele" value={formData.kebele} onChange={handleChange} className="w-full border-gray-200 rounded-lg p-2 bg-gray-50" disabled={!formData.woreda}>
+                                <select required name="kebele" value={formData.kebele} onChange={handleChange} className="w-full border-gray-200 rounded-lg p-2 bg-gray-50 mb-2" disabled={!formData.woreda || formData.woreda === 'ADD_NEW'}>
                                     <option value="">Select Kebele</option>
                                     {kebeles.map(k => <option key={k} value={k}>{k}</option>)}
+                                    <option value="ADD_NEW">+ Add Kebele</option>
                                 </select>
+                                {formData.kebele === 'ADD_NEW' && (
+                                    <input required placeholder="Enter Kebele Name" name="customKebele" value={formData.customKebele || ''} onChange={handleChange} className="w-full border-gray-200 rounded-lg p-2 bg-white ring-2 ring-dark-green outline-none" />
+                                )}
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Mender (Optional)</label>

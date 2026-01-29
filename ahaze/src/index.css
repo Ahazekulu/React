@@ -2,17 +2,30 @@
 
 :root {
   /* Branding Colors */
-  --color-primary: #006600; /* Dark Green */
-  --color-secondary: #1E90FF; /* Light Blue */
-  --color-accent-red: #da251d; /* Ethiopian Red */
-  --color-accent-yellow: #fcd116; /* Ethiopian Yellow */
-  
+  --color-primary: #006600;
+  /* Dark Green */
+  --color-secondary: #1E90FF;
+  /* Light Blue */
+  --color-accent-red: #da251d;
+  /* Ethiopian Red */
+  --color-accent-yellow: #fcd116;
+  /* Ethiopian Yellow */
+
   --bg-primary: #f8fafc;
   --text-primary: #0f172a;
-  
+
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   line-height: 1.5;
   font-weight: 400;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Outfit', sans-serif;
 }
 
 body {
@@ -20,13 +33,25 @@ body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Custom Utilities */
 @layer utilities {
-  .bg-dark-green { background-color: var(--color-primary); }
-  .text-dark-green { color: var(--color-primary); }
-  .bg-light-blue { background-color: var(--color-secondary); }
-  .text-light-blue { color: var(--color-secondary); }
-}
+  .bg-dark-green {
+    background-color: var(--color-primary);
+  }
 
+  .text-dark-green {
+    color: var(--color-primary);
+  }
+
+  .bg-light-blue {
+    background-color: var(--color-secondary);
+  }
+
+  .text-light-blue {
+    color: var(--color-secondary);
+  }
+}

@@ -34,6 +34,8 @@ const Market = () => {
         { id: 'zembil', label: 'My Zembil', icon: <ShoppingCart size={18} /> },
         { id: 'deliver', label: 'Delivery Pack', icon: <Truck size={18} /> },
         { id: 'receive', label: 'Receiving', icon: <Inbox size={18} /> },
+        { id: 'yours', label: 'Your Products', icon: <Tag size={18} /> },
+        { id: 'saved', label: 'Saved', icon: <Heart size={18} /> },
     ];
 
     const regions = useMemo(() => [...new Set(placesData.map(p => p["Level 2"]))].sort(), []);
@@ -169,6 +171,8 @@ const Market = () => {
                     {activeTab === 'zembil' && <ZembilTab items={zembil} updateQuantity={updateQuantity} remove={removeFromZembil} />}
                     {activeTab === 'deliver' && <OrdersTab type="Delivery Pack" icon={<Truck size={48} />} />}
                     {activeTab === 'receive' && <OrdersTab type="Incoming Orders" icon={<Inbox size={48} />} />}
+                    {activeTab === 'yours' && <OrdersTab type="Your Products" icon={<Tag size={48} />} />}
+                    {activeTab === 'saved' && <OrdersTab type="Saved Items" icon={<Heart size={48} />} />}
                 </div>
             </div>
         </div>
@@ -334,20 +338,20 @@ const SellTab = ({ onSuccess }) => {
         setIsSubmitting(true);
 
         try {
-            // In a real app, we'd upload the file to Supabase Storage first
-            // For now we'll just use a placeholder URL if media is set
-            const imageUrls = media ? ['https://images.unsplash.com/photo-1559056199-641a0ac8b55e'] : [];
+            let imageUrls = [];
+
+            if (media?.file) {
+                const publicUrl = await uploadMedia(media.file, 'products', user.id);
+                imageUrls = [publicUrl];
+            }
 
             const { error } = await supabase
                 .from('products')
                 .insert([{
-                    seller_id: user.id,
-                    name: formData.name,
-                    category: formData.category,
-                    price: parseFloat(formData.price),
-                    description: formData.description,
-                    image_urls: imageUrls,
-                    status: 'active'
+                    owner_id: user.id,
+                    ...formData,
+                    images: imageUrls,
+                    is_hot: true // New products are hot!
                 }]);
 
             if (error) throw error;

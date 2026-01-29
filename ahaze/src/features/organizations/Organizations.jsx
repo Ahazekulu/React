@@ -172,6 +172,7 @@ const BrowseTab = ({ industry }) => {
 const RegisterTab = ({ onSuccess }) => {
     const { user } = useAuth();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [logo, setLogo] = useState(null);
     const [formData, setFormData] = useState({
         name: '',
         industry: 'Service',
@@ -183,24 +184,35 @@ const RegisterTab = ({ onSuccess }) => {
         address_kebele: ''
     });
 
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!user || isSubmitting) return;
         setIsSubmitting(true);
 
         try {
+            let logoUrl = null;
+            if (logo) {
+                logoUrl = await uploadMedia(logo.file, 'orgs', user.id);
+            }
+
             const { error } = await supabase
                 .from('organizations')
                 .insert([{
                     creator_id: user.id,
-                    ...formData
+                    owner_id: user.id, // For backward compatibility if both exist
+                    ...formData,
+                    logo_url: logoUrl
                 }]);
 
             if (error) throw error;
             alert('Organization registered successfully!');
             onSuccess();
         } catch (err) {
-            console.error('Error registering org:', err);
+            console.error('Error registering organization:', err);
             alert('Error: ' + err.message);
         } finally {
             setIsSubmitting(false);
@@ -208,85 +220,92 @@ const RegisterTab = ({ onSuccess }) => {
     };
 
     return (
-        <div className="max-w-2xl mx-auto animate-in slide-in-from-bottom-12 duration-700">
-            <div className="bg-white rounded-[50px] p-12 shadow-sm border border-gray-100">
-                <h3 className="text-3xl font-black text-gray-900 mb-2">Build Your Office</h3>
-                <p className="text-gray-500 text-sm font-medium mb-10">Register your organization to join our professional directory.</p>
+        <form onSubmit={handleSubmit} className="bg-white rounded-[40px] p-10 shadow-sm border border-gray-100 max-w-4xl mx-auto animate-in slide-in-from-bottom-6">
+            <h3 className="text-2xl font-black text-gray-900 mb-8">Register Your Organization</h3>
 
-                <form onSubmit={handleSubmit} className="space-y-8">
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em] ml-2">Organization Name *</label>
-                        <input
-                            required
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className="w-full bg-gray-50 border-none rounded-2xl py-4 px-6 text-sm font-black focus:ring-2 focus:ring-gray-900 outline-none"
-                        />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div className="md:col-span-2 flex items-center gap-6 p-6 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+                    <div className="w-24 h-24 bg-white rounded-2xl flex items-center justify-center border border-gray-100 overflow-hidden text-gray-300">
+                        {logo ? <img src={logo.url} className="w-full h-full object-cover" /> : <Landmark size={40} />}
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em] ml-2">Industry</label>
-                            <select
-                                value={formData.industry}
-                                onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
-                                className="w-full bg-gray-50 border-none rounded-2xl py-4 px-5 text-xs font-black outline-none focus:ring-2 focus:ring-gray-900"
-                            >
-                                <option>Finance</option>
-                                <option>Agriculture</option>
-                                <option>Manufacturing</option>
-                                <option>Service</option>
-                                <option>Mining</option>
-                                <option>Internet</option>
-                            </select>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em] ml-2">Ownership Type</label>
-                            <select
-                                value={formData.type}
-                                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                                className="w-full bg-gray-50 border-none rounded-2xl py-4 px-5 text-xs font-black outline-none focus:ring-2 focus:ring-gray-900"
-                            >
-                                <option>Government</option>
-                                <option>Religious</option>
-                                <option>Private</option>
-                                <option>NGO</option>
-                            </select>
-                        </div>
+                    <div className="flex-1">
+                        <p className="text-sm font-black text-gray-900 mb-1">Organization Logo</p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-4">PNG, JPG up to 5MB</p>
+                        <label className="bg-gray-900 text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-black transition-all">
+                            Upload Logo
+                            <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                                const file = e.target.files[0];
+                                if (file) setLogo({ file, url: URL.createObjectURL(file) });
+                            }} />
+                        </label>
                     </div>
+                </div>
 
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em] ml-2">Description</label>
-                        <textarea
-                            value={formData.description}
-                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            rows="3"
-                            className="w-full bg-gray-50 border-none rounded-2xl py-4 px-6 text-sm font-medium focus:ring-2 focus:ring-gray-900 outline-none resize-none"
-                        />
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Company Name *</label>
+                        <input required name="name" value={formData.name} onChange={handleChange} className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 text-sm font-bold focus:ring-2 focus:ring-dark-green outline-none" placeholder="e.g. ahazeKulu Tech" />
                     </div>
-
-                    <div className="space-y-4">
-                        <label className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em] ml-2">Office Location *</label>
-                        <div className="grid grid-cols-2 gap-4">
-                            <input required placeholder="Region" value={formData.address_region} onChange={(e) => setFormData({ ...formData, address_region: e.target.value })} className="bg-gray-50 border-none rounded-xl p-4 text-xs font-bold" />
-                            <input required placeholder="Zone" value={formData.address_zone} onChange={(e) => setFormData({ ...formData, address_zone: e.target.value })} className="bg-gray-50 border-none rounded-xl p-4 text-xs font-bold" />
-                            <input placeholder="Woreda" value={formData.address_woreda} onChange={(e) => setFormData({ ...formData, address_woreda: e.target.value })} className="bg-gray-50 border-none rounded-xl p-4 text-xs font-bold" />
-                            <input placeholder="Kebele" value={formData.address_kebele} onChange={(e) => setFormData({ ...formData, address_kebele: e.target.value })} className="bg-gray-50 border-none rounded-xl p-4 text-xs font-bold" />
-                        </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Industry</label>
+                        <select name="industry" value={formData.industry} onChange={handleChange} className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 text-sm font-bold focus:ring-2 focus:ring-dark-green outline-none">
+                            <option>Service</option>
+                            <option>Finance</option>
+                            <option>Manufacturing</option>
+                            <option>Education</option>
+                            <option>Health</option>
+                            <option>Agriculture</option>
+                        </select>
                     </div>
+                </div>
 
-                    <button
-                        type="submit"
-                        disabled={isSubmitting || !user}
-                        className={`w-full text-white py-5 rounded-[24px] font-black text-lg shadow-2xl transition-all uppercase tracking-widest mt-4 ${isSubmitting || !user ? 'bg-gray-200 shadow-none' : 'bg-gray-900 shadow-gray-200 hover:-translate-y-1'
-                            }`}
-                    >
-                        {isSubmitting ? 'Registering...' : 'Register Organization'}
-                    </button>
-                    {!user && <p className="text-center text-xs text-red-500 font-bold mt-2">Please login to register an organization.</p>}
-                </form>
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Organization Type</label>
+                        <select name="type" value={formData.type} onChange={handleChange} className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 text-sm font-bold focus:ring-2 focus:ring-dark-green outline-none">
+                            <option>Private</option>
+                            <option>Government</option>
+                            <option>Non-Profit (NGO)</option>
+                            <option>Share Company</option>
+                            <option>PLC</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Region</label>
+                        <input required name="address_region" value={formData.address_region} onChange={handleChange} className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 text-sm font-bold focus:ring-2 focus:ring-dark-green outline-none" placeholder="e.g. Oromia" />
+                    </div>
+                </div>
+
+                <div className="md:col-span-2">
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Description</label>
+                    <textarea name="description" value={formData.description} onChange={handleChange} className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 text-sm font-bold focus:ring-2 focus:ring-dark-green outline-none min-h-[120px] resize-none" placeholder="Tell us what your organization does..." />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4 md:col-span-2">
+                    <div>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Zone</label>
+                        <input required name="address_zone" value={formData.address_zone} onChange={handleChange} className="w-full bg-gray-50 border-none rounded-2xl px-4 py-4 text-sm font-bold focus:ring-2 focus:ring-dark-green outline-none" />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Woreda</label>
+                        <input required name="address_woreda" value={formData.address_woreda} onChange={handleChange} className="w-full bg-gray-50 border-none rounded-2xl px-4 py-4 text-sm font-bold focus:ring-2 focus:ring-dark-green outline-none" />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Kebele</label>
+                        <input required name="address_kebele" value={formData.address_kebele} onChange={handleChange} className="w-full bg-gray-50 border-none rounded-2xl px-4 py-4 text-sm font-bold focus:ring-2 focus:ring-dark-green outline-none" />
+                    </div>
+                </div>
             </div>
-        </div>
+
+            <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full bg-dark-green text-white py-5 rounded-[24px] font-black text-lg shadow-2xl shadow-dark-green/30 hover:-translate-y-1 active:translate-y-0 transition-all uppercase tracking-widest flex items-center justify-center gap-3"
+            >
+                {isSubmitting ? <Loader2 className="animate-spin" size={24} /> : <PlusCircle size={24} />}
+                {isSubmitting ? 'Registering...' : 'Complete Registration'}
+            </button>
+        </form>
     );
 };
 

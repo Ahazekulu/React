@@ -49,30 +49,20 @@ const RightSidebar = () => {
                         </h3>
 
                         <div className="space-y-4">
-                            <PerformerItem
-                                icon={<TrendingUp size={12} />}
-                                label="Most Followed"
-                                name="Ato Belay"
-                                value="1.2M"
-                            />
-                            <PerformerItem
-                                icon={<Star size={12} />}
-                                label="Most Loved Place"
-                                name="Lalibela"
-                                value="450k"
-                            />
-                            <PerformerItem
-                                icon={<ShoppingCart size={12} />}
-                                label="Bestseller"
-                                name="Premium Coffee"
-                                value="2.5k"
-                            />
-                            <PerformerItem
-                                icon={<Briefcase size={12} />}
-                                label="Top Organization"
-                                name="Ethio Telecom"
-                                value="10M+"
-                            />
+                            <h4 className="text-[9px] font-black text-gray-300 uppercase tracking-tighter mb-2">Most Followed People</h4>
+                            <PerformerItem icon={<Users size={12} />} name="Ato Belay" value="1.2M" />
+
+                            <h4 className="text-[9px] font-black text-gray-300 uppercase tracking-tighter mb-2 mt-4">Most Loved Places</h4>
+                            <PerformerItem icon={<MapPin size={12} />} name="Lalibela" value="450k" />
+
+                            <h4 className="text-[9px] font-black text-gray-300 uppercase tracking-tighter mb-2 mt-4">Most Sold Products</h4>
+                            <PerformerItem icon={<ShoppingBag size={12} />} name="Premium Coffee" value="2.5k" />
+
+                            <h4 className="text-[9px] font-black text-gray-300 uppercase tracking-tighter mb-2 mt-4">Most Browsed Orgs</h4>
+                            <PerformerItem icon={<Briefcase size={12} />} name="Ethio Telecom" value="10M+" />
+
+                            <h4 className="text-[9px] font-black text-gray-300 uppercase tracking-tighter mb-2 mt-4">Most Followed Teachers</h4>
+                            <PerformerItem icon={<Award size={12} />} name="Dr. Abera" value="85k" />
                         </div>
                     </section>
                 </div>
@@ -91,15 +81,13 @@ const RightSidebar = () => {
     );
 };
 
-const PerformerItem = ({ icon, label, name, value }) => (
-    <div className="group cursor-pointer">
-        <p className="text-[9px] font-bold text-gray-400 uppercase mb-1 flex items-center gap-1 group-hover:text-green-800 transition-colors">
-            {icon} {label}
-        </p>
-        <div className="flex justify-between items-center p-2 rounded-xl group-hover:bg-gray-50 transition-all border border-transparent group-hover:border-gray-100">
+const PerformerItem = ({ icon, name, value }) => (
+    <div className="group cursor-pointer flex justify-between items-center p-2 rounded-xl hover:bg-gray-50 transition-all border border-transparent hover:border-gray-100">
+        <div className="flex items-center gap-2">
+            <span className="text-gray-300 group-hover:text-dark-green transition-colors">{icon}</span>
             <span className="text-xs font-bold text-gray-700">{name}</span>
-            <span className="text-[10px] font-black text-green-800">{value}</span>
         </div>
+        <span className="text-[10px] font-black text-dark-green">{value}</span>
     </div>
 );
 

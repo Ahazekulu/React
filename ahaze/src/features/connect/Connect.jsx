@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Flag, MapPin, Building2, School, Share2, MessageSquare, Heart, Bookmark, Download, Camera, Video, Mic, Send, MoreHorizontal, Loader2 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { Flag, MapPin, Building2, School, Share2, MessageSquare, Heart, Bookmark, Download, Camera, Video, Mic, Send, MoreHorizontal, Loader2, X } from 'lucide-react';
+import { supabase, uploadMedia } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 
 const Connect = () => {
@@ -9,6 +9,7 @@ const Connect = () => {
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [newPostContent, setNewPostContent] = useState('');
+    const [media, setMedia] = useState(null);
     const [isPosting, setIsPosting] = useState(false);
 
     const tabs = [
@@ -17,8 +18,8 @@ const Connect = () => {
         { id: 'zone', label: 'My Zone', icon: <MapPin size={16} /> },
         { id: 'woreda', label: 'My Woreda', icon: <MapPin size={16} /> },
         { id: 'kebele', label: 'My Kebele', icon: <MapPin size={16} /> },
-        { id: 'community', label: 'Community', icon: <Building2 size={16} /> },
-        { id: 'workplace', label: 'WorkPlace', icon: <Building2 size={16} /> },
+        { id: 'community', label: 'My Community', icon: <Building2 size={16} /> },
+        { id: 'workplace', label: 'My WorkPlace', icon: <Building2 size={16} /> },
         { id: 'school', label: 'My School', icon: <School size={16} /> },
     ];
 
@@ -29,8 +30,6 @@ const Connect = () => {
     const fetchPosts = async () => {
         setLoading(true);
         try {
-            // In a real app, we'd filter by the user's actual location levels
-            // For now, we fetch posts matching the level_scope
             const { data, error } = await supabase
                 .from('connect_posts')
                 .select(`
@@ -50,10 +49,15 @@ const Connect = () => {
     };
 
     const handleCreatePost = async () => {
-        if (!newPostContent.trim() || !user) return;
+        if ((!newPostContent.trim() && !media) || !user) return;
         setIsPosting(true);
 
         try {
+            let mediaUrl = null;
+            if (media) {
+                mediaUrl = await uploadMedia(media.file, 'posts', user.id);
+            }
+
             // Determine location name based on profile data
             let locationName = 'Ethiopia';
             if (activeTab === 'region') locationName = profile?.region || 'Unknown Region';
@@ -66,6 +70,7 @@ const Connect = () => {
                 .insert([{
                     author_id: user.id,
                     content: newPostContent,
+                    media_urls: mediaUrl ? [mediaUrl] : [],
                     level_scope: activeTab,
                     location_name: locationName,
                 }])
@@ -79,6 +84,7 @@ const Connect = () => {
 
             setPosts([data, ...posts]);
             setNewPostContent('');
+            setMedia(null);
         } catch (err) {
             console.error('Error creating post:', err);
             alert('Failed to post: ' + err.message);
@@ -111,8 +117,8 @@ const Connect = () => {
             {/* Create Post */}
             <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100">
                 <div className="flex gap-4">
-                    <div className="w-12 h-12 bg-light-blue/10 rounded-2xl flex-shrink-0 flex items-center justify-center font-black text-light-blue">
-                        {profile?.first_name?.charAt(0) || 'U'}
+                    <div className="w-12 h-12 bg-light-blue/10 rounded-2xl flex-shrink-0 flex items-center justify-center font-black text-light-blue overflow-hidden">
+                        {profile?.avatar_url ? <img src={profile.avatar_url} className="w-full h-full object-cover" /> : (profile?.first_name?.charAt(0) || 'U')}
                     </div>
                     <div className="flex-1 space-y-4">
                         <textarea
@@ -122,22 +128,33 @@ const Connect = () => {
                             disabled={!user || isPosting}
                             className="w-full bg-gray-50 border-none rounded-3xl p-6 text-sm font-medium focus:ring-2 focus:ring-light-blue transition-all min-h-[120px] resize-none outline-none"
                         />
+
+                        {media && (
+                            <div className="relative w-40 h-40 rounded-2xl overflow-hidden group">
+                                <img src={media.url} className="w-full h-full object-cover" />
+                                <button onClick={() => setMedia(null)} className="absolute top-2 right-2 bg-black/50 text-white p-1.5 rounded-full hover:bg-black transition-colors">
+                                    <X size={16} />
+                                </button>
+                            </div>
+                        )}
+
                         <div className="flex items-center justify-between pt-2">
                             <div className="flex items-center gap-2">
-                                <button className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:text-light-blue hover:bg-light-blue/5 transition-all active:scale-90">
+                                <label className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:text-light-blue hover:bg-light-blue/5 transition-all active:scale-90 cursor-pointer">
                                     <Camera size={20} />
-                                </button>
-                                <button className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:text-light-blue hover:bg-light-blue/5 transition-all active:scale-90">
-                                    <Video size={20} />
-                                </button>
+                                    <input type="file" className="hidden" accept="image/*,video/*" onChange={(e) => {
+                                        const file = e.target.files[0];
+                                        if (file) setMedia({ file, url: URL.createObjectURL(file) });
+                                    }} />
+                                </label>
                                 <button className="p-3 bg-gray-50 text-gray-400 rounded-xl hover:text-light-blue hover:bg-light-blue/5 transition-all active:scale-90">
                                     <Mic size={20} />
                                 </button>
                             </div>
                             <button
                                 onClick={handleCreatePost}
-                                disabled={!newPostContent.trim() || isPosting || !user}
-                                className={`px-10 py-3.5 rounded-2xl text-sm font-black transition-all shadow-xl flex items-center gap-2 active:scale-95 ${!newPostContent.trim() || !user || isPosting
+                                disabled={(!newPostContent.trim() && !media) || isPosting || !user}
+                                className={`px-10 py-3.5 rounded-2xl text-sm font-black transition-all shadow-xl flex items-center gap-2 active:scale-95 ${(!newPostContent.trim() && !media) || !user || isPosting
                                     ? 'bg-gray-100 text-gray-300 shadow-none'
                                     : 'bg-light-blue text-white shadow-light-blue/20 hover:-translate-y-1'
                                     }`}
