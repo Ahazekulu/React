@@ -168,6 +168,30 @@ const BrowseTab = ({ industry }) => {
         </div>
     );
 };
+const uploadMedia = async (file, bucket, userId) => {
+    try {
+        // Create a unique file path: e.g., "orgs/123-1706600000-logo.png"
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${userId}-${Math.random()}.${fileExt}`;
+        const filePath = `${fileName}`;
+
+        const { data, error } = await supabase.storage
+            .from(bucket)
+            .upload(filePath, file);
+
+        if (error) throw error;
+
+        // Get the Public URL for the uploaded file
+        const { data: { publicUrl } } = supabase.storage
+            .from(bucket)
+            .getPublicUrl(filePath);
+
+        return publicUrl;
+    } catch (error) {
+        console.error('Error uploading image:', error);
+        throw error;
+    }
+};
 
 const RegisterTab = ({ onSuccess }) => {
     const { user } = useAuth();
