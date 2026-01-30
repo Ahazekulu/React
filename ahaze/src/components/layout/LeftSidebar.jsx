@@ -77,11 +77,6 @@ const LeftSidebar = () => {
                 {/* Global Explore */}
                 <div className="space-y-3">
                     <h3 className="text-[10px] font-black uppercase text-gray-400 tracking-[0.3em] ml-2">National Hub</h3>
-                    <div className="space-y-1">
-                        <NavLink to="/" icon={<Home size={18} />} label="Discover Today" active={location.pathname === '/'} />
-                        <NavLink to="/places" icon={<Globe size={18} />} label="Explore Regions" active={location.pathname === '/places'} />
-                        <NavLink to="/connect" icon={<Compass size={18} />} label="Community Feed" active={location.pathname === '/connect'} />
-                    </div>
                 </div>
 
                 {/* Geography Browser */}

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Search, User, MapPin, MessageSquare, ShoppingBag, Landmark, BookOpen, Clock, ChevronDown, Bell, Info } from 'lucide-react';
+import { Search, User, MapPin, MessageSquare, ShoppingBag, Landmark, BookOpen, Clock, ChevronDown, Bell, Info, Menu, X } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
 const Header = () => {
     const [time, setTime] = useState(new Date());
     const [isScrolled, setIsScrolled] = useState(false);
+    const [mobileNavOpen, setMobileNavOpen] = useState(false);
     const location = useLocation();
     const { user, profile } = useAuth();
 
@@ -30,15 +31,15 @@ const Header = () => {
     ];
 
     return (
-        <header className={`sticky top-0 z-50 transition-all duration-500 ${isScrolled ? 'py-3' : 'py-5'}`}>
-            <div className="max-w-[1920px] mx-auto px-6">
-                <div className={`bg-white/80 backdrop-blur-2xl border border-white/20 rounded-[32px] px-6 py-3 flex items-center justify-between shadow-2xl shadow-gray-200/50 transition-all ${isScrolled ? 'shadow-lg' : ''}`}>
+        <header className={`sticky top-0 z-50 transition-all duration-500 ${isScrolled ? 'py-2.5' : 'py-4'}`}>
+            <div className="max-w-[1920px] mx-auto px-3 sm:px-4 md:px-6">
+                <div className={`bg-white/90 backdrop-blur-2xl border border-white/30 rounded-[24px] md:rounded-[32px] px-4 sm:px-6 py-2.5 md:py-3 flex items-center justify-between gap-3 shadow-2xl shadow-gray-200/50 transition-all ${isScrolled ? 'shadow-lg' : ''}`}>
 
                     {/* Brand Section */}
-                    <div className="flex items-center gap-10">
+                    <div className="flex items-center gap-4 sm:gap-8">
                         <Link to="/" className="flex items-center gap-3 group">
-                            <div className="w-12 h-12 bg-dark-green rounded-2xl flex items-center justify-center shadow-lg shadow-dark-green/20 group-hover:rotate-12 transition-transform duration-500">
-                                <Landmark className="text-white" size={24} />
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-dark-green rounded-2xl flex items-center justify-center shadow-lg shadow-dark-green/20 group-hover:rotate-12 transition-transform duration-500">
+                                <Landmark className="text-white" size={22} />
                             </div>
                             <div className="hidden sm:block">
                                 <span className="text-2xl font-black tracking-tighter text-gray-900 block leading-none">ahazeKulu</span>
@@ -81,7 +82,7 @@ const Header = () => {
                     </div>
 
                     {/* Right: Actions & User */}
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-3 sm:gap-4">
                         {/* Status Bar */}
                         <div className="hidden lg:flex flex-col items-end gap-1">
                             <div className="flex items-center gap-2 text-xs font-black text-gray-900">
@@ -98,13 +99,13 @@ const Header = () => {
                         </div>
 
                         <div className="flex items-center gap-3">
-                            <button className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 hover:text-dark-green hover:bg-dark-green/5 transition-all">
-                                <Bell size={20} />
+                            <button className="hidden sm:flex w-10 h-10 sm:w-11 sm:h-11 bg-gray-50 rounded-2xl items-center justify-center text-gray-400 hover:text-dark-green hover:bg-dark-green/5 transition-all">
+                                <Bell size={18} />
                             </button>
 
                             {user ? (
-                                <Link to="/profile" className="flex items-center gap-3 p-1 pr-4 bg-gray-50 rounded-[20px] hover:bg-gray-100 transition-all border border-transparent hover:border-gray-200">
-                                    <div className="w-10 h-10 bg-dark-green rounded-2xl flex items-center justify-center text-white font-black overflow-hidden shadow-lg shadow-dark-green/10">
+                                <Link to="/profile" className="hidden sm:flex items-center gap-3 p-1 pr-4 bg-gray-50 rounded-[20px] hover:bg-gray-100 transition-all border border-transparent hover:border-gray-200">
+                                    <div className="w-9 h-9 sm:w-10 sm:h-10 bg-dark-green rounded-2xl flex items-center justify-center text-white font-black overflow-hidden shadow-lg shadow-dark-green/10">
                                         {profile?.avatar_url ? (
                                             <img src={profile.avatar_url} className="w-full h-full object-cover" />
                                         ) : (
@@ -117,14 +118,86 @@ const Header = () => {
                                     </div>
                                 </Link>
                             ) : (
-                                <Link to="/login" className="bg-dark-green text-white px-8 py-3.5 rounded-2xl text-xs font-black shadow-xl shadow-dark-green/20 hover:-translate-y-0.5 active:scale-95 transition-all">
+                                <Link to="/login" className="hidden sm:inline-flex bg-dark-green text-white px-6 sm:px-8 py-2.5 sm:py-3.5 rounded-2xl text-[11px] font-black shadow-xl shadow-dark-green/20 hover:-translate-y-0.5 active:scale-95 transition-all">
                                     Sign In
                                 </Link>
                             )}
+                            {/* Mobile hamburger */}
+                            <button
+                                className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-gray-50 text-gray-700 hover:bg-gray-900 hover:text-white transition-all xl:hidden"
+                                onClick={() => setMobileNavOpen(prev => !prev)}
+                                aria-label="Toggle navigation"
+                            >
+                                {mobileNavOpen ? <X size={20} /> : <Menu size={20} />}
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
+            {/* Mobile nav sheet */}
+            {mobileNavOpen && (
+                <div className="xl:hidden fixed inset-x-0 top-[72px] sm:top-[80px] z-40 px-3 sm:px-4">
+                    <div className="bg-white/95 backdrop-blur-2xl border border-gray-100 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2">
+                        <div className="divide-y divide-gray-100">
+                            <div className="px-4 pt-3 pb-2 flex items-center justify-between">
+                                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Navigate</span>
+                                <span className="text-[10px] font-black text-dark-green/70">
+                                    {location.pathname === '/' ? 'Home' : navItems.find(n => n.path === location.pathname)?.name || 'Page'}
+                                </span>
+                            </div>
+                            <nav className="flex flex-col">
+                                {navItems
+                                    .filter(item => !['Know us', 'Contact us'].includes(item.name))
+                                    .map(item => {
+                                        const active = location.pathname === item.path;
+                                        return (
+                                            <Link
+                                                key={item.name}
+                                                to={item.path}
+                                                onClick={() => setMobileNavOpen(false)}
+                                                className={`flex items-center gap-3 px-4 py-3 text-sm font-black tracking-tight transition-all
+                                                    ${active
+                                                        ? 'bg-dark-green text-white'
+                                                        : 'text-gray-600 hover:bg-gray-50'
+                                                    }`}
+                                            >
+                                                <span className={active ? 'text-white' : 'text-gray-400'}>
+                                                    {item.icon}
+                                                </span>
+                                                <span>{item.name}</span>
+                                            </Link>
+                                        );
+                                    })}
+                            </nav>
+                            <div className="px-4 py-3 flex items-center justify-between bg-gray-50/80">
+                                {user ? (
+                                    <Link to="/profile" onClick={() => setMobileNavOpen(false)} className="flex items-center gap-3">
+                                        <div className="w-9 h-9 rounded-2xl bg-dark-green text-white flex items-center justify-center overflow-hidden">
+                                            {profile?.avatar_url ? (
+                                                <img src={profile.avatar_url} className="w-full h-full object-cover" />
+                                            ) : (
+                                                (profile?.first_name?.charAt(0) || 'U')
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-xs font-black text-gray-900">{profile?.first_name || 'Citizen'}</span>
+                                            <span className="text-[9px] font-black text-dark-green/70 uppercase tracking-[0.18em]">View profile</span>
+                                        </div>
+                                    </Link>
+                                ) : (
+                                    <Link
+                                        to="/login"
+                                        onClick={() => setMobileNavOpen(false)}
+                                        className="inline-flex items-center justify-center px-4 py-2 rounded-2xl bg-dark-green text-white text-[11px] font-black shadow-md"
+                                    >
+                                        Sign In
+                                    </Link>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </header>
     );
 };

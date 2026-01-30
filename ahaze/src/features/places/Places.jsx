@@ -1,12 +1,16 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { MapPin, Info, Image as ImageIcon, MessageSquare, ShoppingBag, Landmark, Users, TrendingUp, History, Map as MapIcon, ChevronRight, Search, Camera, Video, Calendar, Star, ShieldCheck, UserPlus, Heart, Share2, X, Loader2, Zap, Building2, Globe, Upload, Clock, Mic, Cloud, AlertTriangle, Phone, Mail, ExternalLink, Mountain, Droplets, BookOpen, Music, Flag, Radio, FileText, Paperclip, XCircle, Eye } from 'lucide-react';
-import { supabase, uploadMedia } from '../../lib/supabase';
+import { MapPin, Info, MessageSquare, ShoppingBag, Landmark, Users, History, Map as MapIcon, ChevronRight, Search, Calendar, Star, ShieldCheck, Zap, Building2, Globe, Cloud, AlertTriangle, Phone, Mail, ExternalLink, Mountain, Droplets, BookOpen, Loader2, Clock } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import placesData from '../../data/places.json';
 
+import PostInputArea from '../../components/posts/PostInputArea';
+import PostCard from '../../components/posts/PostCard';
+import MediaViewerOverlay from '../../components/posts/MediaViewerOverlay';
+
 const Places = () => {
-    const { user, profile } = useAuth();
+    const { user } = useAuth();
     const [activeTab, setActiveTab] = useState('post');
     const [searchParams] = useSearchParams();
     const [selectedLevels, setSelectedLevels] = useState({
@@ -15,6 +19,12 @@ const Places = () => {
         woreda: '',
         kebele: ''
     });
+    const [posts, setPosts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const [viewerPost, setViewerPost] = useState(null);
+    const [viewerIndex, setViewerIndex] = useState(0);
+    const [viewedPostIds, setViewedPostIds] = useState([]); // Track viewed posts for view count
 
     useEffect(() => {
         const region = searchParams.get('region') || '';
@@ -60,6 +70,7 @@ const Places = () => {
 
     const tabs = [
         { id: 'post', label: 'Post', icon: <MessageSquare size={16} /> },
+        { id: 'saved', label: 'Saved', icon: <Star size={16} /> },
         { id: 'know', label: 'Know', icon: <Info size={16} /> },
         { id: 'map', label: 'Map', icon: <MapIcon size={16} /> },
         { id: 'latest', label: 'Latest', icon: <Zap size={16} /> },
@@ -69,6 +80,70 @@ const Places = () => {
         { id: 'events', label: 'Events', icon: <Calendar size={16} /> },
         { id: 'agents', label: 'Our Agents', icon: <Users size={16} /> },
     ];
+
+    const fetchPosts = useCallback(async () => {
+        setLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('connect_posts')
+                .select('*, author:profiles(first_name, avatar_url), likes(user_id), saves_count, views_count')
+                .eq('location_name', displayPlace)
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            setPosts(data || []);
+        } catch (err) { console.error('Error fetching posts:', err); } finally { setLoading(false); }
+    }, [displayPlace, user]);
+
+    // Increment view count when media viewer is opened
+    const incrementViewsIfNeeded = async (post) => {
+        if (!user || !post?.id) return;
+        if (viewedPostIds.includes(post.id)) return; // Only count once per session
+
+        setViewedPostIds(prev => [...prev, post.id]);
+        try {
+            const currentViews = post.views_count || 0;
+            const { data, error } = await supabase
+                .from('connect_posts')
+                .update({ views_count: currentViews + 1 })
+                .eq('id', post.id)
+                .select('id, views_count')
+                .single();
+
+            if (!error && data) {
+                setPosts(prev =>
+                    prev.map(p => p.id === data.id ? { ...p, views_count: data.views_count } : p)
+                ); // Update local state with new view count
+            }
+        } catch (err) {
+            console.error('Error incrementing views:', err);
+        }
+    };
+
+    const openMediaViewer = async (post, index) => {
+        if (!post || !post.media_urls || post.media_urls.length === 0) return;
+        setViewerPost(post);
+        setViewerIndex(index);
+        setViewerOpen(true);
+        await incrementViewsIfNeeded(post);
+    };
+
+    const closeMediaViewer = () => {
+        setViewerOpen(false);
+        setViewerPost(null);
+        setViewerIndex(0);
+    };
+
+    const goToMediaIndex = (nextIndex) => {
+        if (!viewerPost || !viewerPost.media_urls) return;
+        if (nextIndex < 0 || nextIndex >= viewerPost.media_urls.length) return;
+        setViewerIndex(nextIndex);
+    };
+
+    useEffect(() => { fetchPosts(); }, [fetchPosts]); // Re-fetch on place or user change
+
+    const handlePostSuccess = () => {
+        fetchPosts(); // Refresh posts after a successful submission
+    };
 
     return (
         <div className="space-y-6">
@@ -122,19 +197,40 @@ const Places = () => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar border-t border-gray-100 pt-6">
-                    {tabs.map(tab => (
-                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-2 px-8 py-4 rounded-2xl text-xs font-black transition-all whitespace-nowrap active:scale-95 ${activeTab === tab.id ? 'bg-dark-green text-white shadow-xl shadow-dark-green/20 -translate-y-1' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>
-                            {tab.icon} {tab.label}
-                        </button>
-                    ))}
+                <div className="border-t border-gray-100 pt-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+                        {tabs.map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`flex items-center justify-center gap-1.5 px-3 py-2 sm:px-4 sm:py-3 rounded-2xl text-[11px] sm:text-xs font-black transition-all active:scale-95 ${
+                                    activeTab === tab.id
+                                        ? 'bg-dark-green text-white shadow-md shadow-dark-green/20'
+                                        : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
+                                }`}
+                            >
+                                <span className="text-gray-400 sm:inline-block hidden">
+                                    {tab.icon}
+                                </span>
+                                <span className="truncate">{tab.label}</span>
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
             <div className="min-h-[400px]">
+                {activeTab === 'post' && (
+                    <PostInputArea
+                        place={displayPlace}
+                        locationData={selectedLevels}
+                        levelScope={selectedLevels.kebele || selectedLevels.woreda || selectedLevels.zone ? (selectedLevels.kebele ? 'kebele' : selectedLevels.woreda ? 'woreda' : 'zone') : 'region'}
+                        onPostSuccess={handlePostSuccess}
+                    />
+                )}
+                {activeTab === 'saved' && <SavedTab user={user} onOpenMedia={openMediaViewer} />}
                 {activeTab === 'know' && <KnowTab placeName={displayPlace} location={selectedLevels} />}
                 {activeTab === 'map' && <MapTab place={displayPlace} />}
-                {activeTab === 'post' && <PostTab place={displayPlace} location={selectedLevels} user={user} profile={profile} />}
                 {activeTab === 'latest' && <LatestTab place={displayPlace} />}
                 {activeTab === 'kulu' && <AtAhazeKuluTab place={displayPlace} />}
                 {activeTab === 'market' && <MarketTab place={displayPlace} />}
@@ -142,6 +238,23 @@ const Places = () => {
                 {activeTab === 'events' && <EventsTab place={displayPlace} />}
                 {activeTab === 'agents' && <AgentsTab place={displayPlace} />}
             </div>
+
+            <div className="space-y-1">
+                {posts.map(post => (
+                    <PostCard key={post.id} post={post} user={user} onOpenMedia={(index) => openMediaViewer(post, index)} />
+                ))}
+            </div>
+
+            {viewerOpen && viewerPost && (
+                <MediaViewerOverlay
+                    post={viewerPost}
+                    currentIndex={viewerIndex}
+                    onClose={closeMediaViewer}
+                    onPrev={() => goToMediaIndex(viewerIndex - 1)}
+                    onNext={() => goToMediaIndex(viewerIndex + 1)}
+                    onJump={goToMediaIndex}
+                />
+            )}
         </div>
     );
 };
@@ -383,739 +496,6 @@ const InfraStat = ({ label, count }) => (
         </div>
     </div>
 );
-
-const PostTab = ({ place, user, profile, location }) => {
-    const [posts, setPosts] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [content, setContent] = useState('');
-    const [attachments, setAttachments] = useState([]); // Array of { file, url, type, name }
-    const [isPosting, setIsPosting] = useState(false);
-
-    // Recording & Live State
-    const [recordingMode, setRecordingMode] = useState(null); // 'audio' | 'video'
-    const [recordingStatus, setRecordingStatus] = useState('idle'); // 'idle' | 'recording'
-    const [recordingTime, setRecordingTime] = useState(0);
-    const [showAudioOptions, setShowAudioOptions] = useState(false);
-    const [showGifPicker, setShowGifPicker] = useState(false);
-
-    const mediaRecorderRef = useRef(null);
-    const streamRef = useRef(null); // Keep track of stream to stop tracks later
-    const chunksRef = useRef([]);
-    const videoPreviewRef = useRef(null);
-    const timerRef = useRef(null);
-    const fileInputRef = useRef(null);
-
-    // Sample GIFs for MVP (Real URLs)
-    const sampleGifs = [
-        "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbDN6eHd5aGpwdGg0b3F6eHl6eHl6eHl6eHl6eHl6eHl6eHl6eHl6eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKSjRrfIPjeiVyM/giphy.gif",
-        "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbDN6eHd5aGpwdGg0b3F6eHl6eHl6eHl6eHl6eHl6eHl6eHl6eHl6eSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0HlHJGHe3yAMhdQY/giphy.gif",
-        "https://media.giphy.com/media/xT5LMHxhOfscxPfIfm/giphy.gif",
-        "https://media.giphy.com/media/l2JhtTt0aD2uA/giphy.gif",
-        "https://media.giphy.com/media/3o7527pa7qs9kCG78A/giphy.gif",
-        "https://media.giphy.com/media/26gsjCZpPolPr3sBy/giphy.gif"
-    ];
-
-    useEffect(() => { fetchPosts(); }, [place]);
-
-    const fetchPosts = async () => {
-        setLoading(true);
-        try {
-            // Fetch posts along with a flag if the CURRENT user has liked them.
-            // Note: This requires a JOIN or a separate fetch. For simplicity/speed in this MVP, 
-            // we'll fetch posts first, then we can fetch "my likes" in the PostItem or side-load them.
-            // A common pattern is: select *, author:..., likes(count), my_likes:likes(user_id) eq user.id
-            // But supsbase syntax for "my_likes" with filter is tricky in one go.
-            // Let's stick to simple posts first.
-            const { data, error } = await supabase.from('connect_posts').select('*, author:profiles(first_name, avatar_url), likes(user_id)').eq('location_name', place).order('created_at', { ascending: false });
-            if (error) throw error;
-            setPosts(data || []);
-        } catch (err) { console.error('Error fetching posts:', err); } finally { setLoading(false); }
-    };
-
-    const handleFiles = (e, type) => {
-        const files = Array.from(e.target.files || []);
-        const newAttachments = files.map(file => ({
-            file,
-            url: URL.createObjectURL(file), // Preview URL
-            type: type || (file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : 'document'),
-            name: file.name
-        }));
-        setAttachments(prev => [...prev, ...newAttachments]);
-        e.target.value = ''; // Reset input
-    };
-
-    const removeAttachment = (index) => {
-        setAttachments(prev => prev.filter((_, i) => i !== index));
-    };
-
-    const addThumbnail = (attachmentIndex, e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        setAttachments(prev => prev.map((att, i) =>
-            i === attachmentIndex ? {
-                ...att,
-                thumbnail: URL.createObjectURL(file),
-                thumbnailFile: file
-            } : att
-        ));
-        e.target.value = '';
-    };
-
-    const startRecording = async (type) => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: type === 'video' });
-            if (type === 'video' && videoPreviewRef.current) {
-                videoPreviewRef.current.srcObject = stream;
-            }
-
-            const recorder = new MediaRecorder(stream);
-            mediaRecorderRef.current = recorder;
-            chunksRef.current = [];
-
-            recorder.ondataavailable = (e) => {
-                if (e.data.size > 0) chunksRef.current.push(e.data);
-            };
-
-            recorder.onstop = () => {
-                const blob = new Blob(chunksRef.current, { type: type === 'video' ? 'video/webm' : 'audio/webm' });
-                const file = new File([blob], `recording_${Date.now()}.${type === 'video' ? 'webm' : 'webm'}`, { type: type === 'video' ? 'video/webm' : 'audio/webm' });
-
-                setAttachments(prev => [...prev, {
-                    file,
-                    url: URL.createObjectURL(blob),
-                    type: type,
-                    name: `Recorded ${type === 'video' ? 'Video' : 'Audio'}`
-                }]);
-
-                // Stop tracks
-                stream.getTracks().forEach(track => track.stop());
-                setIsRecording(false);
-                setRecordingType(null);
-                setRecordingTime(0);
-                clearInterval(timerRef.current);
-            };
-
-            recorder.start();
-            setIsRecording(true);
-            setRecordingType(type);
-
-            // Timer
-            setRecordingTime(0);
-            timerRef.current = setInterval(() => {
-                setRecordingTime(prev => prev + 1);
-            }, 1000);
-
-        } catch (err) {
-            console.error("Error starting recording:", err);
-            alert("Could not access microphone/camera. Please ensure permissions are granted.");
-        }
-    };
-
-    const stopRecording = () => {
-        if (mediaRecorderRef.current && recordingStatus === 'recording') {
-            mediaRecorderRef.current.stop();
-        } else {
-            cleanupRecording();
-        }
-    };
-
-    // New recording functions for the enhanced UI
-    const initializeRecording = async (mode) => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: true,
-                video: mode === 'video'
-            });
-
-            streamRef.current = stream;
-            setRecordingMode(mode);
-            setRecordingStatus('idle');
-
-            setTimeout(() => {
-                if (mode === 'video' && videoPreviewRef.current) {
-                    videoPreviewRef.current.srcObject = stream;
-                    videoPreviewRef.current.muted = true;
-                }
-            }, 100);
-
-        } catch (err) {
-            console.error("Error initializing recording:", err);
-            alert("Could not access microphone/camera. Please ensure permissions are granted.");
-        }
-    };
-
-    const startCapture = () => {
-        if (!streamRef.current) return;
-
-        const recorder = new MediaRecorder(streamRef.current);
-        mediaRecorderRef.current = recorder;
-        chunksRef.current = [];
-
-        recorder.ondataavailable = (e) => {
-            if (e.data.size > 0) chunksRef.current.push(e.data);
-        };
-
-        recorder.onstop = () => {
-            const type = recordingMode;
-            const blob = new Blob(chunksRef.current, { type: type === 'video' ? 'video/webm' : 'audio/webm' });
-            const file = new File([blob], `recording_${Date.now()}.webm`, { type: type === 'video' ? 'video/webm' : 'audio/webm' });
-
-            setAttachments(prev => [...prev, {
-                file,
-                url: URL.createObjectURL(blob),
-                type: type,
-                name: `Recorded ${type === 'video' ? 'Video' : 'Audio'}`
-            }]);
-
-            cleanupRecording();
-        };
-
-        recorder.start();
-        setRecordingStatus('recording');
-
-        setRecordingTime(0);
-        timerRef.current = setInterval(() => {
-            setRecordingTime(prev => prev + 1);
-        }, 1000);
-    };
-
-    const cleanupRecording = () => {
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop());
-            streamRef.current = null;
-        }
-        if (mediaRecorderRef.current && recordingStatus === 'recording') {
-            mediaRecorderRef.current.stop();
-        }
-        setRecordingMode(null);
-        setRecordingStatus('idle');
-        setRecordingTime(0);
-        if (timerRef.current) clearInterval(timerRef.current);
-    };
-
-    const formatTime = (seconds) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
-
-    const handlePost = async () => {
-        if (!user || (!content.trim() && attachments.length === 0)) return;
-        setIsPosting(true);
-        try {
-            // Upload all attachments and their thumbnails
-            const uploadPromises = attachments.map(async (att) => {
-                if (!att.file && att.url.startsWith('http')) return { url: att.url, thumbnail: null };
-                if (att.file) {
-                    const url = await uploadMedia(att.file, 'posts', user.id);
-                    let thumbnail = null;
-
-                    // Upload thumbnail if exists
-                    if (att.thumbnailFile) {
-                        thumbnail = await uploadMedia(att.thumbnailFile, 'posts/thumbnails', user.id);
-                    }
-
-                    return { url, thumbnail };
-                }
-                return null;
-            });
-
-            const uploadedData = (await Promise.all(uploadPromises)).filter(Boolean);
-            const mediaUrls = uploadedData.map(d => d.url);
-            const thumbnails = uploadedData.map(d => d.thumbnail);
-
-            // Determine primary media type
-            let primaryType = 'text';
-            if (attachments.length > 0) {
-                const types = new Set(attachments.map(a => a.type));
-                if (types.size > 1) primaryType = 'mixed';
-                else primaryType = attachments[0].type;
-            }
-
-            const { error } = await supabase.from('connect_posts').insert([{
-                author_id: user.id,
-                content: content,
-                media_urls: mediaUrls,
-                media_thumbnails: thumbnails,
-                media_type: primaryType,
-                level_scope: location.kebele ? 'kebele' : location.woreda ? 'woreda' : location.zone ? 'zone' : 'region',
-                location_name: place
-            }]);
-            if (error) throw error;
-            setContent(''); setAttachments([]); fetchPosts();
-        } catch (err) { console.error('Error posting:', err); alert('Failed to post: ' + err.message); } finally { setIsPosting(false); }
-    };
-
-    if (loading) return <div className="py-20 flex justify-center"><Loader2 className="animate-spin text-dark-green" size={40} /></div>;
-
-    return (
-        <div className="max-w-5xl mx-auto space-y-3 animate-in fade-in duration-700">
-            {user && (
-                <div className="bg-white rounded-2xl border border-gray-100 p-6 relative overflow-hidden mb-6 shadow-sm">
-                    {/* Recording & Live Overlay */}
-                    {recordingMode && (
-                        <div className="absolute inset-0 z-50 bg-gray-900 flex flex-col items-center justify-center text-white animate-in fade-in">
-                            {/* Video Preview Layer */}
-                            {recordingMode === 'video' && (
-                                <>
-                                    <video
-                                        ref={videoPreviewRef}
-                                        autoPlay
-                                        muted
-                                        playsInline
-                                        className="absolute inset-0 w-full h-full object-cover z-0"
-                                    />
-                                    {/* Mock Live UI Overlay */}
-                                    <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-                                        <div className="bg-red-600 text-white px-3 py-1 rounded-md font-bold text-xs uppercase tracking-widest inline-flex items-center gap-2">
-                                            {recordingStatus === 'recording' ? 'LIVE' : 'PREVIEW'}
-                                        </div>
-                                        {recordingStatus === 'recording' && (
-                                            <div className="bg-black/40 backdrop-blur-md px-3 py-1 rounded-md text-xs font-bold flex items-center gap-2">
-                                                <Eye size={14} /> 1.2k Viewers
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Mock Chat Stream */}
-                                    {recordingStatus === 'recording' && (
-                                        <div className="absolute bottom-24 left-4 w-64 h-32 mask-image-gradient-to-t pointer-events-none opacity-80 space-y-2 flex flex-col justify-end">
-                                            <div className="flex items-center gap-2 text-sm"><span className="font-bold text-yellow-400">User1</span> Amazing place!</div>
-                                            <div className="flex items-center gap-2 text-sm"><span className="font-bold text-blue-400">Alex</span> Love the vibe 🔥</div>
-                                            <div className="flex items-center gap-2 text-sm"><span className="font-bold text-green-400">Sarah</span> Where is this exactly?</div>
-                                        </div>
-                                    )}
-                                </>
-                            )}
-
-                            {/* Controls Layer */}
-                            <div className="relative z-20 flex flex-col items-center gap-8 w-full px-8 pointer-events-auto">
-
-                                {/* Info Display */}
-                                {recordingMode === 'audio' && (
-                                    <div className="w-32 h-32 rounded-full bg-dark-green/20 flex items-center justify-center animate-pulse">
-                                        <Mic size={48} className="text-white" />
-                                    </div>
-                                )}
-
-                                {recordingStatus === 'recording' && (
-                                    <div className="text-5xl font-black font-mono tracking-widest drop-shadow-md">
-                                        {formatTime(recordingTime)}
-                                    </div>
-                                )}
-
-                                {/* Main Action Button */}
-                                {recordingStatus === 'idle' ? (
-                                    <div className="text-center space-y-4">
-                                        <h3 className="text-2xl font-black">{recordingMode === 'video' ? 'Ready to go Live?' : 'Start Audio Recording'}</h3>
-                                        <p className="text-gray-300 text-sm max-w-xs mx-auto mb-4">
-                                            {recordingMode === 'video' ? 'Check your camera and surroundings. You are in preview mode.' : 'Tap the button below to start recording your voice note.'}
-                                        </p>
-                                        <button
-                                            onClick={startCapture}
-                                            className="px-12 py-4 bg-white text-gray-900 rounded-full font-black text-lg hover:scale-105 transition-transform shadow-[0_0_40px_rgba(255,255,255,0.3)]"
-                                        >
-                                            {recordingMode === 'video' ? 'GO LIVE' : 'START RECORDING'}
-                                        </button>
-                                        <button onClick={cleanupRecording} className="block w-full text-sm text-gray-400 hover:text-white mt-4 underline">Cancel</button>
-                                    </div>
-                                ) : (
-                                    <button
-                                        onClick={stopRecording}
-                                        className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center hover:scale-105 transition-transform bg-red-500"
-                                    >
-                                        <div className="w-8 h-8 bg-white rounded-sm" />
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="flex gap-4">
-                        <div className="w-12 h-12 bg-dark-green/10 text-dark-green rounded-2xl flex-shrink-0 flex items-center justify-center font-black">
-                            {profile?.avatar_url ? <img src={profile.avatar_url} className="w-full h-full object-cover rounded-2xl" /> : (profile?.first_name?.charAt(0) || 'U')}
-                        </div>
-                        <div className="flex-1 space-y-4">
-                            <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder={`Talk to the community in ${place}...`} className="w-full bg-gray-50 border-none rounded-3xl p-6 text-sm font-medium focus:ring-2 focus:ring-dark-green outline-none min-h-[120px] resize-none" />
-
-                            {/* Attachments Preview - Scrollable Row */}
-                            {attachments.length > 0 && (
-                                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                                    {attachments.map((att, index) => (
-                                        <div key={index} className="relative w-24 h-24 flex-shrink-0 rounded-2xl overflow-hidden group border border-gray-100 bg-gray-50 flex items-center justify-center">
-                                            {att.type === 'image' || att.type === 'gif' ? (
-                                                <img src={att.url} className="w-full h-full object-cover" />
-                                            ) : att.type === 'video' ? (
-                                                <video src={att.url} className="w-full h-full object-cover opacity-80" />
-                                            ) : (
-                                                <div className="flex flex-col items-center text-gray-500 p-2 text-center">
-                                                    <FileText size={24} className="mb-1" />
-                                                    <span className="text-[8px] font-bold leading-tight line-clamp-2">{att.name}</span>
-                                                </div>
-                                            )}
-
-                                            {/* Thumbnail Preview or Add Button for Audio/Documents */}
-                                            {(att.type === 'audio' || att.type === 'document') && (
-                                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    {att.thumbnail ? (
-                                                        <img src={att.thumbnail} className="absolute inset-0 w-full h-full object-cover" />
-                                                    ) : (
-                                                        <label className="absolute bottom-1 left-1 right-1 bg-white/90 backdrop-blur-sm text-gray-700 text-[8px] font-bold py-1 px-2 rounded cursor-pointer hover:bg-white transition-all text-center">
-                                                            + Thumbnail
-                                                            <input
-                                                                type="file"
-                                                                accept="image/*"
-                                                                className="hidden"
-                                                                onChange={(e) => addThumbnail(index, e)}
-                                                            />
-                                                        </label>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            {/* Type Indicator Icon */}
-                                            <div className="absolute bottom-1 right-1 bg-black/60 text-white p-1 rounded-full text-[8px]">
-                                                {att.type === 'video' ? <Video size={8} /> : att.type === 'audio' ? <Mic size={8} /> : att.type === 'document' ? <FileText size={8} /> : null}
-                                            </div>
-
-                                            <button onClick={() => removeAttachment(index)} className="absolute top-1 right-1 bg-red-500 text-white p-0.5 rounded-full hover:scale-110 transition-transform z-10"><X size={12} /></button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            <div className="flex flex-wrap items-center gap-2 justify-between">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <label className="flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-400 rounded-xl hover:text-dark-green hover:bg-dark-green/5 transition-all cursor-pointer">
-                                        <Camera size={18} />
-                                        <span className="text-[9px] font-black uppercase tracking-widest hidden sm:inline">Photo</span>
-                                        <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleFiles(e, 'image')} />
-                                    </label>
-                                    <label className="flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-400 rounded-xl hover:text-dark-green hover:bg-dark-green/5 transition-all cursor-pointer">
-                                        <Video size={18} />
-                                        <span className="text-[9px] font-black uppercase tracking-widest hidden sm:inline">Video</span>
-                                        <input type="file" accept="video/*" multiple className="hidden" onChange={(e) => handleFiles(e, 'video')} />
-                                    </label>
-
-                                    {/* Document Upload Button */}
-                                    <label className="flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-400 rounded-xl hover:text-dark-green hover:bg-dark-green/5 transition-all cursor-pointer">
-                                        <Paperclip size={18} />
-                                        <span className="text-[9px] font-black uppercase tracking-widest hidden sm:inline">File</span>
-                                        <input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt" multiple className="hidden" onChange={(e) => handleFiles(e, 'document')} />
-                                    </label>
-
-                                    <button onClick={() => setShowGifPicker(!showGifPicker)} className="flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-400 rounded-xl hover:text-dark-green hover:bg-dark-green/5 transition-all relative">
-                                        <Zap size={18} />
-                                        <span className="text-[9px] font-black uppercase tracking-widest hidden sm:inline">Gif</span>
-                                        {/* GIF Picker Modal */}
-                                        {showGifPicker && (
-                                            <div className="absolute bottom-full mb-4 left-0 w-80 bg-white rounded-3xl shadow-2xl border border-gray-100 p-4 z-50 animate-in zoom-in-95 grid grid-cols-3 gap-2">
-                                                {sampleGifs.map((gif, i) => (
-                                                    <img
-                                                        key={i}
-                                                        src={gif}
-                                                        className="w-full h-20 object-cover rounded-xl cursor-pointer hover:scale-105 transition-transform border border-transparent hover:border-dark-green"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setAttachments(prev => [...prev, { file: null, url: gif, type: 'gif', name: 'GIF' }]);
-                                                            setShowGifPicker(false);
-                                                        }}
-                                                    />
-                                                ))}
-                                                <div className="col-span-3 text-center text-[10px] text-gray-400 font-bold py-2">Powered by GIPHY</div>
-                                            </div>
-                                        )}
-                                    </button>
-                                    <div className="relative">
-                                        <button
-                                            onClick={() => setShowAudioOptions(!showAudioOptions)}
-                                            className="flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-400 rounded-xl hover:text-dark-green hover:bg-dark-green/5 transition-all"
-                                        >
-                                            <Mic size={18} />
-                                            <span className="text-[9px] font-black uppercase tracking-widest hidden sm:inline">Audio</span>
-                                        </button>
-                                        {showAudioOptions && (
-                                            <div className="absolute bottom-full mb-2 left-0 w-40 bg-white rounded-xl shadow-xl border border-gray-100 p-1 z-50 animate-in zoom-in-95 flex flex-col">
-                                                <button
-                                                    className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg text-xs font-bold text-gray-700 text-left"
-                                                    onClick={() => { setShowAudioOptions(false); initializeRecording('audio'); }}
-                                                >
-                                                    <Mic size={14} /> Record Mic
-                                                </button>
-                                                <label className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg text-xs font-bold text-gray-700 text-left cursor-pointer">
-                                                    <Upload size={14} /> Upload File
-                                                    <input type="file" accept="audio/*" multiple className="hidden" onChange={(e) => { handleFiles(e, 'audio'); setShowAudioOptions(false); }} />
-                                                </label>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <button onClick={() => initializeRecording('video')} className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-all border border-red-100 animate-pulse">
-                                        <Radio size={18} />
-                                        <span className="text-[9px] font-black uppercase tracking-widest hidden sm:inline">Live</span>
-                                    </button>
-                                </div>
-                                <button onClick={handlePost} disabled={isPosting || (!content.trim() && attachments.length === 0)} className="bg-dark-green text-white px-8 py-3.5 rounded-2xl text-xs font-black shadow-xl shadow-dark-green/20 hover:-translate-y-1 transition-all disabled:opacity-50">
-                                    {isPosting ? 'Posting...' : 'Post News'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            <div className="space-y-1">
-                {posts.map(post => (
-                    <PostItem key={post.id} post={post} user={user} />
-                ))}
-            </div>
-        </div>
-    );
-};
-
-const PostItem = ({ post, user }) => {
-    // Check if current user has liked based on the fetched data (simple optimistic check)
-    // Adjust logic if `post.likes` is an array of objects
-    const initialLiked = post.likes && post.likes.some(l => l.user_id === user?.id);
-    const [liked, setLiked] = useState(initialLiked);
-    const [likeCount, setLikeCount] = useState(post.likes ? post.likes.length : 0);
-
-    const [saved, setSaved] = useState(false);
-    const [showComments, setShowComments] = useState(false);
-    const [comments, setComments] = useState([]);
-    const [newComment, setNewComment] = useState('');
-    const [loadingComments, setLoadingComments] = useState(false);
-
-    // Effect to ensure we update if props change (though typically this component mounts once)
-    useEffect(() => {
-        if (post.likes) {
-            const isLiked = post.likes.some(l => l.user_id === user?.id);
-            setLiked(isLiked);
-            setLikeCount(post.likes.length);
-        }
-    }, [post.likes, user?.id]);
-
-    const handleLike = async () => {
-        if (!user) return;
-
-        // Optimistic update
-        const previousLiked = liked;
-        const previousCount = likeCount;
-        setLiked(!liked);
-        setLikeCount(prev => liked ? prev - 1 : prev + 1);
-
-        try {
-            if (previousLiked) {
-                // Unlike
-                const { error } = await supabase.from('likes').delete().eq('post_id', post.id).eq('user_id', user.id);
-                if (error) throw error;
-            } else {
-                // Like
-                const { error } = await supabase.from('likes').insert([{ post_id: post.id, user_id: user.id }]);
-                if (error) throw error;
-            }
-        } catch (err) {
-            console.error("Like failed:", err);
-            // Revert
-            setLiked(previousLiked);
-            setLikeCount(previousCount);
-        }
-    };
-
-    const toggleComments = async () => {
-        if (!showComments) {
-            setLoadingComments(true);
-            try {
-                const { data, error } = await supabase.from('comments').select('*, author:profiles(first_name, avatar_url)').eq('post_id', post.id).order('created_at', { ascending: true });
-                if (error) throw error;
-                setComments(data || []);
-            } catch (err) { console.error("Error fetching comments:", err); }
-            finally { setLoadingComments(false); }
-        }
-        setShowComments(!showComments);
-    };
-
-    const handleCommentSubmit = async (e) => {
-        e.preventDefault();
-        if (!newComment.trim() || !user) return;
-        try {
-            const { data, error } = await supabase.from('comments').insert([{
-                post_id: post.id,
-                user_id: user.id,
-                content: newComment
-            }]).select('*, author:profiles(first_name, avatar_url)').single();
-
-            if (error) throw error;
-            // Optimistically update if table works, but since we select * it should be fine
-            // We might need to manually mock the author if join doesn't work on insert return immediately
-            // But let's just refetch or append.
-            setComments(prev => [...prev, { ...data, author: { first_name: user.user_metadata?.first_name || 'Me', avatar_url: null } }]);
-            setNewComment('');
-        } catch (err) { console.error("Error commenting:", err); alert("Failed to comment."); }
-    };
-
-    return (
-        <div className="bg-white p-6 border-b border-gray-100 hover:bg-gray-50/30 transition-colors first:rounded-t-2xl last:rounded-b-2xl sm:border sm:rounded-2xl sm:mb-4 sm:shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 bg-gray-100 rounded-full flex items-center justify-center font-bold text-dark-green overflow-hidden ring-2 ring-white">
-                        {post.author?.avatar_url ? <img src={post.author.avatar_url} className="w-full h-full object-cover" /> : (post.author?.first_name?.charAt(0) || 'U')}
-                    </div>
-                    <div>
-                        <h4 className="text-[15px] font-bold text-gray-900 leading-tight">{post.author?.first_name || 'Anonymous'}</h4>
-                        <p className="text-[11px] text-gray-400 font-medium mt-0.5">
-                            {new Date(post.created_at).toLocaleDateString()}
-                            {post.media_type === 'video' && <span className="ml-2 text-red-500 animate-pulse font-bold tracking-wider">● LIVE</span>}
-                        </p>
-                    </div>
-                </div>
-                <button className="p-2 text-gray-300 hover:text-gray-900 rounded-xl hover:bg-gray-100 transition-all">
-                    <TrendingUp className="rotate-90" size={18} />
-                </button>
-            </div>
-
-            <p className="text-gray-800 text-[15px] leading-relaxed mb-5 whitespace-pre-wrap">{post.content}</p>
-
-            {post.media_urls?.length > 0 && (
-                <div className="mb-6 space-y-2">
-                    {/* Render Content based on types */}
-                    {/* We do a mixed grid approach */}
-                    <div className={`grid gap-2 ${post.media_urls.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                        {post.media_urls.map((url, idx) => {
-                            const isVideo = url.endsWith('.webm') || url.endsWith('.mp4') || post.media_type === 'video' && idx === 0;
-                            const isAudio = url.endsWith('.mp3') || url.endsWith('.webm') && post.media_type === 'audio'; // Weak check, but 'media_type' helps if single
-                            const isImage = !isVideo && !isAudio && (url.match(/\.(jpeg|jpg|gif|png)$/) != null || post.media_type === 'image' || post.media_type === 'gif');
-                            const isDoc = !isVideo && !isAudio && !isImage;
-
-                            if (isDoc) {
-                                return (
-                                    <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="col-span-full flex items-center gap-4 p-4 bg-gray-50 rounded-2xl border border-gray-200 hover:bg-gray-100 transition-colors">
-                                        <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-blue-500 shadow-sm"><FileText size={24} /></div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-bold text-gray-900 truncate">Attached Document</p>
-                                            <p className="text-xs text-gray-500 uppercase tracking-widest">Download / View</p>
-                                        </div>
-                                        <Upload size={16} className="text-gray-400" />
-                                    </a>
-                                );
-                            }
-
-                            return (
-                                <div key={idx} className={`rounded-xl overflow-hidden border border-gray-100 bg-gray-50 relative ${post.media_urls.length === 1 ? 'aspect-video' : 'aspect-square'}`}>
-                                    {isVideo ? (
-                                        <video src={url} controls className="w-full h-full object-cover" />
-                                    ) : isAudio ? (
-                                        <div className="flex items-center justify-center w-full h-full bg-gray-900 text-white">
-                                            <div className="text-center">
-                                                <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse"><Music size={32} /></div>
-                                                <audio src={url} controls className="w-48" />
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <img src={url} alt="Post media" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
-
-            <div className="flex items-center justify-between pt-2">
-                <div className="flex items-center gap-8">
-                    <PostActionButton
-                        icon={<Heart size={20} className={liked ? "fill-current" : ""} />}
-                        label={likeCount > 0 ? likeCount : ""}
-                        activeColor="text-red-500"
-                        isActive={liked}
-                        onClick={handleLike}
-                    />
-                    <PostActionButton
-                        icon={<MessageSquare size={20} />}
-                        label={comments.length > 0 ? comments.length : ""}
-                        onClick={toggleComments}
-                    />
-                    <PostActionButton
-                        icon={<Share2 size={20} />}
-                        onClick={() => {
-                            navigator.clipboard.writeText(`Check this out: ${post.content}`);
-                            alert("Link copied!");
-                        }}
-                    />
-                </div>
-
-                <div className="flex items-center gap-4">
-                    <PostActionButton
-                        icon={<Eye size={18} />}
-                        label={post.views_count || 0}
-                        isActive={false}
-                        onClick={() => { }}
-                    />
-                    <PostActionButton
-                        icon={<Star size={18} className={saved ? "fill-current" : ""} />}
-                        isActive={saved}
-                        activeColor="text-yellow-500"
-                        onClick={() => setSaved(!saved)}
-                    />
-                    <PostActionButton
-                        icon={<Upload size={18} />}
-                        onClick={() => {
-                            if (post.media_urls?.[0]) window.open(post.media_urls[0], '_blank');
-                        }}
-                    />
-                </div>
-            </div>
-
-            {/* Comments Section */}
-            {showComments && (
-                <div className="mt-8 pt-8 border-t border-gray-100 animate-in fade-in slide-in-from-top-4 space-y-6">
-                    {loadingComments ? (
-                        <div className="text-center py-4"><Loader2 className="animate-spin inline text-dark-green" /></div>
-                    ) : (
-                        <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
-                            {comments.map(comment => (
-                                <div key={comment.id} className="flex gap-3 text-sm">
-                                    <div className="w-8 h-8 rounded-full bg-gray-100 flex-shrink-0 flex items-center justify-center font-bold text-gray-500 overflow-hidden">
-                                        {comment.author?.avatar_url ? <img src={comment.author.avatar_url} className="w-full h-full object-cover" /> : (comment.author?.first_name?.charAt(0) || 'U')}
-                                    </div>
-                                    <div className="bg-gray-50 rounded-2xl rounded-tl-none p-3 flex-1">
-                                        <p className="font-bold text-gray-900 text-xs mb-1">{comment.author?.first_name || 'User'}</p>
-                                        <p className="text-gray-600 font-medium">{comment.content}</p>
-                                    </div>
-                                </div>
-                            ))}
-                            {comments.length === 0 && <p className="text-center text-gray-400 text-xs italic py-4">No comments yet. Be the first!</p>}
-                        </div>
-                    )}
-
-                    <form onSubmit={handleCommentSubmit} className="flex items-center gap-3">
-                        <input
-                            type="text"
-                            value={newComment}
-                            onChange={(e) => setNewComment(e.target.value)}
-                            placeholder="Write a comment..."
-                            className="flex-1 bg-gray-50 border-none rounded-2xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-dark-green outline-none"
-                        />
-                        <button type="submit" disabled={!newComment.trim()} className="bg-dark-green text-white p-3 rounded-xl hover:opacity-90 disabled:opacity-50 transition-all">
-                            <TrendingUp size={16} className="rotate-90" />
-                        </button>
-                    </form>
-                </div>
-            )}
-        </div>
-    );
-};
-
-const PostActionButton = ({ icon, label, count, activeColor = "text-dark-green", isActive, onClick }) => (
-    <button onClick={onClick} className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${isActive ? activeColor : 'text-gray-400 hover:' + activeColor}`}>
-        {icon}
-        <span className="hidden sm:inline">{label}</span>
-        {count !== undefined && <span className="ml-1 opacity-60">{count}</span>}
-    </button>
-);
-
-
 
 const EventsTab = ({ place }) => {
     const [events, setEvents] = useState([]);
@@ -1407,6 +787,126 @@ const AgentsTab = ({ place }) => {
                     </div>
                 ))}
             </div>
+        </div>
+    );
+};
+
+const SavedTab = ({ user, onOpenMedia }) => {
+    const [posts, setPosts] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const loadSaved = async () => {
+            if (!user) {
+                setPosts([]);
+                setLoading(false);
+                return;
+            }
+            try {
+                const { data: savedRows, error: savedError } = await supabase
+                    .from('saved_posts')
+                    .select('post_id')
+                    .eq('user_id', user.id);
+
+                if (savedError) throw savedError;
+                const ids = (savedRows || []).map(r => r.post_id);
+                if (ids.length === 0) {
+                    setPosts([]);
+                    setLoading(false);
+                    return;
+                }
+
+                const { data: postData, error: postsError } = await supabase
+                    .from('connect_posts')
+                    .select('*, author:profiles(first_name, avatar_url), likes(user_id), saves_count, views_count')
+                    .in('id', ids)
+                    .order('created_at', { ascending: false });
+
+                if (postsError) throw postsError;
+                setPosts(postData || []);
+            } catch (err) {
+                console.error('Error loading saved posts:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadSaved();
+    }, [user]);
+
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const [viewerPost, setViewerPost] = useState(null);
+    const [viewerIndex, setViewerIndex] = useState(0);
+
+    const openMediaViewer = (post, index) => {
+        if (!post || !post.media_urls || post.media_urls.length === 0) return;
+        setViewerPost(post);
+        setViewerIndex(index);
+        setViewerOpen(true);
+    };
+
+    const closeMediaViewer = () => {
+        setViewerOpen(false);
+        setViewerPost(null);
+        setViewerIndex(0);
+    };
+
+    const goToMediaIndex = (nextIndex) => {
+        if (!viewerPost || !viewerPost.media_urls) return;
+        if (nextIndex < 0 || nextIndex >= viewerPost.media_urls.length) return;
+        setViewerIndex(nextIndex);
+    };
+
+    if (!user) {
+        return (
+            <div className="bg-white rounded-[32px] p-10 border border-gray-100 text-center">
+                <p className="text-sm font-black text-gray-900 mb-2">Sign in to view saved content</p>
+                <p className="text-xs text-gray-500">Your saved posts across ahazePlaces will appear here.</p>
+            </div>
+        );
+    }
+
+    if (loading) {
+        return (
+            <div className="py-20 flex justify-center">
+                <Loader2 className="animate-spin text-dark-green" size={32} />
+            </div>
+        );
+    }
+
+    if (posts.length === 0) {
+        return (
+            <div className="bg-white rounded-[32px] p-10 border border-gray-100 text-center">
+                <Star size={32} className="mx-auto text-yellow-400 mb-3" />
+                <p className="text-sm font-black text-gray-900 mb-1">No saved posts yet</p>
+                <p className="text-xs text-gray-500 max-w-md mx-auto">
+                    Tap the star icon on any post in ahazePlaces or ahazeConnect to save it here for later.
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-1">
+            {posts.map(post => (
+                <PostCard
+                    key={post.id}
+                    post={post}
+                    user={user}
+                    onOpenMedia={(index) => onOpenMedia(post, index)}
+                />
+            ))}
+
+            {viewerOpen && viewerPost && (
+                <MediaViewerOverlay
+                    post={viewerPost}
+                    currentIndex={viewerIndex}
+                    onClose={closeMediaViewer}
+                    onPrev={() => goToMediaIndex(viewerIndex - 1)}
+                    onNext={() => goToMediaIndex(viewerIndex + 1)}
+                    onJump={goToMediaIndex}
+                />
+            )}
         </div>
     );
 };
