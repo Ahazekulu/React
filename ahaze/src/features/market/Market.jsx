@@ -9,6 +9,32 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import placesData from '../../data/places.json';
 
+/**
+ * Uploads a file to Supabase Storage and returns the public URL
+ * @param {File} file - The file object from the input
+ * @param {string} bucket - The name of your Supabase storage bucket (e.g., 'products')
+ * @param {string} userId - To create a unique path
+ */
+const uploadMedia = async (file, bucket, userId) => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}-${Math.random()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    // 1. Upload the file to Supabase Storage
+    const { data, error } = await supabase.storage
+        .from(bucket)
+        .upload(filePath, file);
+
+    if (error) throw error;
+
+    // 2. Get the Public URL
+    const { data: { publicUrl } } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(filePath);
+
+    return publicUrl;
+};
+
 const Market = () => {
     const { user, profile } = useAuth();
     const [activeTab, setActiveTab] = useState('buy');
@@ -350,7 +376,7 @@ const SellTab = ({ onSuccess }) => {
                 .insert([{
                     owner_id: user.id,
                     ...formData,
-                    images: imageUrls,
+                    image_urls: imageUrls,
                     is_hot: true // New products are hot!
                 }]);
 
