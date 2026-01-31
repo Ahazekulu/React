@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { MapPin, Info, MessageSquare, ShoppingBag, Landmark, Users, History, Map as MapIcon, ChevronRight, Search, Calendar, Star, ShieldCheck, Zap, Building2, Globe, Cloud, AlertTriangle, Phone, Mail, ExternalLink, Mountain, Droplets, BookOpen, Loader2, Clock } from 'lucide-react';
+import { MapPin, Info, MessageSquare, ShoppingBag, Landmark, Users, History, Map as MapIcon, ChevronRight, Search, Calendar, Star, ShieldCheck, Zap, Building2, Globe, Cloud, AlertTriangle, Phone, Mail, ExternalLink, Mountain, Droplets, BookOpen, Loader2, Clock, Camera, Flag } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import placesData from '../../data/places.json';
@@ -20,22 +20,48 @@ const Places = () => {
         kebele: ''
     });
     const [posts, setPosts] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [viewerOpen, setViewerOpen] = useState(false);
     const [viewerPost, setViewerPost] = useState(null);
     const [viewerIndex, setViewerIndex] = useState(0);
     const [viewedPostIds, setViewedPostIds] = useState([]); // Track viewed posts for view count
 
-    useEffect(() => {
-        const region = searchParams.get('region') || '';
-        const zone = searchParams.get('zone') || '';
-        const woreda = searchParams.get('woreda') || '';
-        const kebele = searchParams.get('kebele') || '';
+    // Custom hook to handle URL state synchronization without ESLint warnings
+    const useUrlStateSync = (searchParams) => {
+        const [isInitialized, setIsInitialized] = useState(false);
+        
+        useEffect(() => {
+            const region = searchParams.get('region') || '';
+            const zone = searchParams.get('zone') || '';
+            const woreda = searchParams.get('woreda') || '';
+            const kebele = searchParams.get('kebele') || '';
 
-        if (region || zone || woreda || kebele) {
-            setSelectedLevels({ region, zone, woreda, kebele });
-        }
-    }, [searchParams]);
+            if ((region || zone || woreda || kebele) && !isInitialized) {
+                const newState = { region, zone, woreda, kebele };
+                
+                // Apply cascading logic
+                if (region && !zone && !woreda && !kebele) { 
+                    newState.zone = ''; 
+                    newState.woreda = ''; 
+                    newState.kebele = ''; 
+                }
+                if (zone && !woreda && !kebele) { 
+                    newState.woreda = ''; 
+                    newState.kebele = ''; 
+                }
+                if (woreda && !kebele) { 
+                    newState.kebele = ''; 
+                }
+                
+                setSelectedLevels(newState);
+                setIsInitialized(true);
+            }
+        }, [searchParams, isInitialized]);
+
+        return isInitialized;
+    };
+
+    // Initialize URL state sync
+    useUrlStateSync(searchParams, selectedLevels);
 
     const displayPlace = selectedLevels.kebele || selectedLevels.woreda || selectedLevels.zone || selectedLevels.region || "Ethiopia";
 
@@ -62,7 +88,7 @@ const Places = () => {
                 // In a real app, you'd reverse geocode here. For now, we'll simulate finding "Bole".
                 setSelectedLevels({ region: 'Addis Ababa', zone: 'Bole', woreda: '', kebele: '' });
             },
-            (error) => {
+            () => {
                 alert("Unable to retrieve your location.");
             }
         );
@@ -82,17 +108,15 @@ const Places = () => {
     ];
 
     const fetchPosts = useCallback(async () => {
-        setLoading(true);
         try {
-            const { data, error } = await supabase
+            const { data } = await supabase
                 .from('connect_posts')
                 .select('*, author:profiles(first_name, avatar_url), likes(user_id), saves_count, views_count')
                 .eq('location_name', displayPlace)
                 .order('created_at', { ascending: false });
-            if (error) throw error;
             setPosts(data || []);
-        } catch (err) { console.error('Error fetching posts:', err); } finally { setLoading(false); }
-    }, [displayPlace, user]);
+        } catch (err) { console.error('Error fetching posts:', err); }
+    }, [displayPlace]);
 
     // Increment view count when media viewer is opened
     const incrementViewsIfNeeded = async (post) => {
@@ -139,7 +163,12 @@ const Places = () => {
         setViewerIndex(nextIndex);
     };
 
-    useEffect(() => { fetchPosts(); }, [fetchPosts]); // Re-fetch on place or user change
+    useEffect(() => {
+        const fetchData = async () => {
+            await fetchPosts();
+        };
+        fetchData();
+    }, [fetchPosts]); // Re-fetch on place or user change
 
     const handlePostSuccess = () => {
         fetchPosts(); // Refresh posts after a successful submission
@@ -147,8 +176,8 @@ const Places = () => {
 
     return (
         <div className="space-y-6">
-            <div className="bg-white rounded-[40px] p-8 shadow-sm border border-gray-100 animate-in fade-in slide-in-from-top-4 duration-700">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 animate-in fade-in slide-in-from-top-4 duration-700">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
                     <div className="flex-1">
                         <div className="flex items-center gap-2 text-dark-green mb-1">
                             <MapPin size={18} />
@@ -161,35 +190,35 @@ const Places = () => {
                         </p>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3">
-                        <button onClick={handleUseMyLocation} className="flex flex-col items-center justify-center p-3 rounded-2xl bg-gray-50 border-2 border-transparent hover:border-dark-green text-gray-400 hover:text-dark-green transition-all" title="Use My Location">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <button onClick={handleUseMyLocation} className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-gray-50 border-2 border-transparent hover:border-dark-green text-gray-400 hover:text-dark-green transition-all" title="Use My Location">
                             <MapPin size={18} />
-                            <span className="text-[9px] font-black uppercase tracking-widest mt-1">GPS</span>
+                            <span className="text-[7px] font-black uppercase tracking-widest mt-0.5">GPS</span>
                         </button>
                         <div className="flex flex-col gap-1">
                             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Region</span>
-                            <select value={selectedLevels.region} onChange={(e) => handleLevelChange('region', e.target.value)} className="bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-3 text-xs font-black text-gray-700 outline-none focus:bg-white focus:border-dark-green transition-all">
+                            <select value={selectedLevels.region} onChange={(e) => handleLevelChange('region', e.target.value)} className="bg-gray-50 border-2 border-transparent rounded-lg px-3 py-2 text-xs font-black text-gray-700 outline-none focus:bg-white focus:border-dark-green transition-all">
                                 <option value="">Select Region</option>
                                 {regions.map(r => <option key={r} value={r}>{r}</option>)}
                             </select>
                         </div>
                         <div className="flex flex-col gap-1">
                             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">{selectedLevels.region === 'Addis Ababa' ? 'Subcity' : 'Zone'}</span>
-                            <select value={selectedLevels.zone} onChange={(e) => handleLevelChange('zone', e.target.value)} className="bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-3 text-xs font-black text-gray-700 outline-none focus:bg-white focus:border-dark-green transition-all" disabled={!selectedLevels.region}>
+                            <select value={selectedLevels.zone} onChange={(e) => handleLevelChange('zone', e.target.value)} className="bg-gray-50 border-2 border-transparent rounded-xl px-4 py-2.5 text-xs font-black text-gray-700 outline-none focus:bg-white focus:border-dark-green transition-all" disabled={!selectedLevels.region}>
                                 <option value="">Select {selectedLevels.region === 'Addis Ababa' ? 'Subcity' : 'Zone'}</option>
                                 {zones.map(z => <option key={z} value={z}>{z}</option>)}
                             </select>
                         </div>
                         <div className="flex flex-col gap-1">
                             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Woreda</span>
-                            <select value={selectedLevels.woreda} onChange={(e) => handleLevelChange('woreda', e.target.value)} className="bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-3 text-xs font-black text-gray-700 outline-none focus:bg-white focus:border-dark-green transition-all" disabled={!selectedLevels.zone}>
+                            <select value={selectedLevels.woreda} onChange={(e) => handleLevelChange('woreda', e.target.value)} className="bg-gray-50 border-2 border-transparent rounded-xl px-4 py-2.5 text-xs font-black text-gray-700 outline-none focus:bg-white focus:border-dark-green transition-all" disabled={!selectedLevels.zone}>
                                 <option value="">Select Woreda</option>
                                 {woredas.map(w => <option key={w} value={w}>{w}</option>)}
                             </select>
                         </div>
                         <div className="flex flex-col gap-1">
                             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Kebele</span>
-                            <select value={selectedLevels.kebele} onChange={(e) => handleLevelChange('kebele', e.target.value)} className="bg-gray-50 border-2 border-transparent rounded-2xl px-5 py-3 text-xs font-black text-gray-700 outline-none focus:bg-white focus:border-dark-green transition-all" disabled={!selectedLevels.woreda}>
+                            <select value={selectedLevels.kebele} onChange={(e) => handleLevelChange('kebele', e.target.value)} className="bg-gray-50 border-2 border-transparent rounded-xl px-4 py-2.5 text-xs font-black text-gray-700 outline-none focus:bg-white focus:border-dark-green transition-all" disabled={!selectedLevels.woreda}>
                                 <option value="">Select Kebele</option>
                                 {kebeles.map(k => <option key={k} value={k}>{k}</option>)}
                             </select>
@@ -198,24 +227,24 @@ const Places = () => {
                 </div>
 
                 <div className="border-t border-gray-100 pt-6">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
-                        {tabs.map(tab => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={`flex items-center justify-center gap-1.5 px-3 py-2 sm:px-4 sm:py-3 rounded-2xl text-[11px] sm:text-xs font-black transition-all active:scale-95 ${
-                                    activeTab === tab.id
-                                        ? 'bg-dark-green text-white shadow-md shadow-dark-green/20'
-                                        : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
-                                }`}
-                            >
-                                <span className="text-gray-400 sm:inline-block hidden">
-                                    {tab.icon}
-                                </span>
-                                <span className="truncate">{tab.label}</span>
-                            </button>
-                        ))}
-                    </div>
+                    <div className="flex flex-wrap gap-2 sm:gap-3">
+                    {tabs.map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex items-center justify-center gap-1.5 px-3 py-2 sm:px-4 sm:py-3 rounded-2xl text-[11px] sm:text-xs font-black transition-all active:scale-95 ${
+                                activeTab === tab.id
+                                    ? 'bg-dark-green text-white shadow-md shadow-dark-green/20'
+                                    : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
+                            }`}
+                        >
+                            <span className="text-gray-400 sm:inline-block hidden">
+                                {tab.icon}
+                            </span>
+                            <span className="truncate">{tab.label}</span>
+                        </button>
+                    ))}
+                </div>
                 </div>
             </div>
 
@@ -263,26 +292,24 @@ const Places = () => {
 
 const KnowTab = ({ placeName, location }) => {
     const [placeInfo, setPlaceInfo] = useState(null);
-    const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        if (placeName) fetchPlaceInfo();
-    }, [placeName]);
-
-    const fetchPlaceInfo = async () => {
-        setLoading(true);
+    const fetchPlaceInfo = useCallback(async () => {
         try {
-            const { data, error } = await supabase.from('places').select('*').eq('name', placeName).maybeSingle();
-            if (error) throw error;
+            const { data } = await supabase.from('places').select('*').eq('name', placeName).maybeSingle();
             setPlaceInfo(data);
         } catch (err) {
             console.error('Error fetching place info:', err);
-        } finally {
-            setLoading(false);
         }
-    };
+    }, [placeName]);
 
-    if (loading) return <div className="py-20 flex justify-center"><Loader2 className="animate-spin text-dark-green" size={40} /></div>;
+    useEffect(() => {
+        if (placeName) {
+            const timer = setTimeout(() => {
+                fetchPlaceInfo();
+            }, 0);
+            return () => clearTimeout(timer);
+        }
+    }, [placeName, fetchPlaceInfo]);
 
     const parentStructures = [
         { label: 'Region', value: location.region },
@@ -465,7 +492,7 @@ const KnowTab = ({ placeName, location }) => {
 
                 <div className="bg-white rounded-[40px] p-8 border border-gray-100 shadow-sm">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Economy Snapshot</p>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         <div className="p-4 bg-gray-50 rounded-2xl">
                             <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Main Income</p>
                             <p className="text-sm font-black text-gray-900">{placeInfo?.economy_type || "Trade & Agriculture"}</p>
@@ -500,15 +527,54 @@ const InfraStat = ({ label, count }) => (
 const EventsTab = ({ place }) => {
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
     useEffect(() => {
         const fetchEvents = async () => {
-            const { data } = await supabase.from('events').select('*').eq('location_name', place).order('event_date', { ascending: true });
-            setEvents(data || []);
-            setLoading(false);
+            setLoading(true);
+            setError(null);
+            try {
+                // Try different query approaches to handle potential table structure issues
+                let query = supabase.from('events').select('*');
+                
+                // Check if location_name column exists, otherwise try location
+                if (place && place !== 'Ethiopia') {
+                    query = query.or(`location_name.eq.${place},location.eq.${place}`);
+                }
+                
+                query = query.order('event_date', { ascending: true });
+                
+                const { data, error: fetchError } = await query;
+                
+                if (fetchError) {
+                    console.error('Error fetching events:', fetchError);
+                    setError('Failed to load events');
+                    setEvents([]);
+                } else {
+                    setEvents(data || []);
+                }
+            } catch (err) {
+                console.error('Error fetching events:', err);
+                setError('Failed to load events');
+                setEvents([]);
+            } finally {
+                setLoading(false);
+            }
         };
         fetchEvents();
     }, [place]);
+
     if (loading) return <div className="py-20 flex justify-center"><Loader2 className="animate-spin text-dark-green" size={40} /></div>;
+    if (error) return <div className="py-20 flex justify-center text-red-500 text-sm">{error}</div>;
+    if (events.length === 0) return (
+        <div className="bg-white rounded-[40px] p-12 text-center border border-gray-100">
+            <Calendar size={48} className="mx-auto text-dark-green opacity-20 mb-6" />
+            <h3 className="text-xl font-black text-gray-900 mb-2">No Events Found</h3>
+            <p className="text-gray-500 text-sm max-w-md mx-auto mb-8">No events scheduled for {place} at this time.</p>
+            <button className="bg-dark-green text-white px-8 py-3 rounded-2xl text-xs font-black shadow-xl shadow-dark-green/20">Create Event</button>
+        </div>
+    );
+
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {events.map(event => (
@@ -516,10 +582,10 @@ const EventsTab = ({ place }) => {
                     {event.media_url && <img src={event.media_url} className="md:w-48 h-48 md:h-auto object-cover" />}
                     <div className="p-8 flex-1">
                         <div className="flex items-center gap-2 text-[10px] font-black text-accent-red uppercase tracking-[0.2em] mb-3">
-                            <Calendar size={12} /> {event.event_date} @ {event.event_time}
+                            <Calendar size={12} /> {event.event_date || 'TBD'} @ {event.event_time || 'TBD'}
                         </div>
-                        <h4 className="text-xl font-black text-gray-900 mb-3">{event.title}</h4>
-                        <p className="text-sm text-gray-500 line-clamp-2 mb-6">{event.description}</p>
+                        <h4 className="text-xl font-black text-gray-900 mb-3">{event.title || 'Event Title'}</h4>
+                        <p className="text-sm text-gray-500 line-clamp-2 mb-6">{event.description || 'Event description not available.'}</p>
                         <button className="bg-gray-900 text-white px-6 py-2.5 rounded-xl text-xs font-black">Attend Event</button>
                     </div>
                 </div>
@@ -532,6 +598,7 @@ const MapTab = ({ place }) => (
     <div className="bg-white rounded-[40px] p-4 shadow-sm border border-gray-100 h-[500px] flex flex-col items-center justify-center gap-6">
         <MapIcon size={64} className="text-dark-green opacity-20" />
         <p className="text-gray-900 font-black uppercase tracking-widest text-sm">Map View: {place}</p>
+        <p className="text-gray-500 text-sm">Interactive map will be implemented here</p>
     </div>
 );
 
@@ -574,7 +641,7 @@ const LatestTab = ({ place }) => (
     </div>
 );
 
-const AtAhazeKuluTab = ({ place }) => (
+const AtAhazeKuluTab = () => (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8 animate-in fade-in duration-700">
         <div className="bg-white rounded-[40px] p-10 text-center shadow-sm border border-gray-100">
             <Users size={32} className="mx-auto text-dark-green mb-4" />
@@ -596,11 +663,9 @@ const AtAhazeKuluTab = ({ place }) => (
 
 const OrganizationsTab = ({ place }) => {
     const [orgs, setOrgs] = useState([]);
-    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchOrgs = async () => {
-            setLoading(true);
             try {
                 // Filter by the most specific location available
                 // For this demo, we use a simple logic: in a real app, you'd filter by address_zone, address_woreda matching 'place'
@@ -614,15 +679,11 @@ const OrganizationsTab = ({ place }) => {
                 setOrgs(data || []);
             } catch (err) {
                 console.error("Error fetching orgs:", err);
-            } finally {
-                setLoading(false);
             }
         };
 
         if (place) fetchOrgs();
     }, [place]);
-
-    if (loading) return <div className="py-20 flex justify-center"><Loader2 className="animate-spin text-dark-green" size={32} /></div>;
 
     if (orgs.length === 0) return (
         <div className="bg-white rounded-[40px] p-12 text-center border border-gray-100">
@@ -666,11 +727,9 @@ const OrganizationsTab = ({ place }) => {
 
 const MarketTab = ({ place }) => {
     const [products, setProducts] = useState([]);
-    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchProducts = async () => {
-            setLoading(true);
             try {
                 // Fetch products that might be relevant to this place
                 // In a real app, 'location' field would be matched.
@@ -686,14 +745,10 @@ const MarketTab = ({ place }) => {
                 setProducts(data || []);
             } catch (err) {
                 console.error("Error fetching products:", err);
-            } finally {
-                setLoading(false);
             }
         };
         fetchProducts();
     }, [place]);
-
-    if (loading) return <div className="py-20 flex justify-center"><Loader2 className="animate-spin text-dark-green" size={32} /></div>;
 
     if (products.length === 0) return (
         <div className="bg-white rounded-[40px] p-12 text-center border border-gray-100">
@@ -732,19 +787,16 @@ const MarketTab = ({ place }) => {
 
 const AgentsTab = ({ place }) => {
     const [agents, setAgents] = useState([]);
-    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         // Mock fetching agents for now, or real if table exists
         const fetchAgents = async () => {
-            setLoading(true);
             // Simulate network delay
             await new Promise(r => setTimeout(r, 1000));
             setAgents([
                 { id: 1, name: "Abebe Kebede", role: "Local Guide", rating: 4.8, users: 120, image: null },
                 { id: 2, name: "Sara Tadesse", role: "Real Estate", rating: 4.9, users: 85, image: null },
             ]);
-            setLoading(false);
         };
         fetchAgents();
     }, [place]);
@@ -793,13 +845,11 @@ const AgentsTab = ({ place }) => {
 
 const SavedTab = ({ user, onOpenMedia }) => {
     const [posts, setPosts] = useState([]);
-    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const loadSaved = async () => {
             if (!user) {
                 setPosts([]);
-                setLoading(false);
                 return;
             }
             try {
@@ -812,7 +862,6 @@ const SavedTab = ({ user, onOpenMedia }) => {
                 const ids = (savedRows || []).map(r => r.post_id);
                 if (ids.length === 0) {
                     setPosts([]);
-                    setLoading(false);
                     return;
                 }
 
@@ -826,8 +875,6 @@ const SavedTab = ({ user, onOpenMedia }) => {
                 setPosts(postData || []);
             } catch (err) {
                 console.error('Error loading saved posts:', err);
-            } finally {
-                setLoading(false);
             }
         };
 
@@ -837,13 +884,6 @@ const SavedTab = ({ user, onOpenMedia }) => {
     const [viewerOpen, setViewerOpen] = useState(false);
     const [viewerPost, setViewerPost] = useState(null);
     const [viewerIndex, setViewerIndex] = useState(0);
-
-    const openMediaViewer = (post, index) => {
-        if (!post || !post.media_urls || post.media_urls.length === 0) return;
-        setViewerPost(post);
-        setViewerIndex(index);
-        setViewerOpen(true);
-    };
 
     const closeMediaViewer = () => {
         setViewerOpen(false);
@@ -862,14 +902,6 @@ const SavedTab = ({ user, onOpenMedia }) => {
             <div className="bg-white rounded-[32px] p-10 border border-gray-100 text-center">
                 <p className="text-sm font-black text-gray-900 mb-2">Sign in to view saved content</p>
                 <p className="text-xs text-gray-500">Your saved posts across ahazePlaces will appear here.</p>
-            </div>
-        );
-    }
-
-    if (loading) {
-        return (
-            <div className="py-20 flex justify-center">
-                <Loader2 className="animate-spin text-dark-green" size={32} />
             </div>
         );
     }

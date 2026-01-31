@@ -21,22 +21,20 @@ const Header = () => {
     }, []);
 
     const navItems = [
-        { name: 'ahazePlaces', path: '/places', icon: <MapPin size={14} /> },
-        { name: 'ahazeConnect', path: '/connect', icon: <MessageSquare size={14} /> },
-        { name: 'ahazeMarket', path: '/market', icon: <ShoppingBag size={14} /> },
-        { name: 'ahazeOrganizations', path: '/organizations', icon: <Landmark size={14} /> },
-        { name: 'ahazeKnowledge', path: '/knowledge', icon: <BookOpen size={14} /> },
+        { name: 'Messages', path: '/messages', icon: <MessageSquare size={14} /> },
+        { name: 'Notifications', path: '/notifications', icon: <Bell size={14} /> },
         { name: 'Know us', path: '/know-us', icon: <Info size={14} /> },
         { name: 'Contact us', path: '/contact', icon: <MessageSquare size={14} /> },
+        { name: 'Cart', path: '/cart', icon: <ShoppingBag size={14} /> },
     ];
 
     return (
-        <header className={`sticky top-0 z-50 transition-all duration-500 ${isScrolled ? 'py-2.5' : 'py-4'}`}>
-            <div className="max-w-[1920px] mx-auto px-3 sm:px-4 md:px-6">
-                <div className={`bg-white/90 backdrop-blur-2xl border border-white/30 rounded-[24px] md:rounded-[32px] px-4 sm:px-6 py-2.5 md:py-3 flex items-center justify-between gap-3 shadow-2xl shadow-gray-200/50 transition-all ${isScrolled ? 'shadow-lg' : ''}`}>
+        <header className={`sticky top-0 z-50 transition-all duration-500 ${isScrolled ? 'py-1' : 'py-1.5'}`}>
+            <div className="max-w-[1920px] mx-auto px-1.5 sm:px-2 md:px-3">
+                <div className={`bg-white/90 backdrop-blur-2xl border border-white/30 rounded-[16px] md:rounded-[20px] px-2 sm:px-3 md:px-4 py-1.5 md:py-2 flex items-center justify-between gap-1.5 shadow-2xl shadow-gray-200/50 transition-all ${isScrolled ? 'shadow-lg' : ''}`}>
 
                     {/* Brand Section */}
-                    <div className="flex items-center gap-4 sm:gap-8">
+                    <div className="flex items-center gap-2 sm:gap-4">
                         <Link to="/" className="flex items-center gap-3 group">
                             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-dark-green rounded-2xl flex items-center justify-center shadow-lg shadow-dark-green/20 group-hover:rotate-12 transition-transform duration-500">
                                 <Landmark className="text-white" size={22} />
@@ -66,14 +64,14 @@ const Header = () => {
                     </div>
 
                     {/* Middle: Search bar with premium feel */}
-                    <div className="hidden lg:flex flex-1 max-w-md mx-8">
+                    <div className="hidden lg:flex flex-1 max-w-xs mx-3">
                         <div className="w-full relative group">
                             <input
                                 type="text"
                                 placeholder="Search everything in Ethiopia..."
-                                className="w-full bg-gray-50/50 border border-transparent rounded-[20px] py-3.5 pl-12 pr-6 text-sm font-bold placeholder:text-gray-400 focus:outline-none focus:bg-white focus:border-dark-green/20 focus:ring-4 focus:ring-dark-green/5 transition-all"
+                                className="w-full bg-gray-50/50 border border-transparent rounded-[12px] py-2 pl-9 pr-3 text-sm font-bold placeholder:text-gray-400 focus:outline-none focus:bg-white focus:border-dark-green/20 focus:ring-2 focus:ring-dark-green/5 transition-all"
                             />
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-dark-green transition-colors" size={18} />
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-dark-green transition-colors" size={14} />
                             <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 px-2 py-1 bg-gray-200 rounded-md text-[9px] font-black text-gray-500">
                                 <ChevronDown size={10} />
                                 CTRL K
@@ -82,7 +80,7 @@ const Header = () => {
                     </div>
 
                     {/* Right: Actions & User */}
-                    <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
                         {/* Status Bar */}
                         <div className="hidden lg:flex flex-col items-end gap-1">
                             <div className="flex items-center gap-2 text-xs font-black text-gray-900">
@@ -147,7 +145,6 @@ const Header = () => {
                             </div>
                             <nav className="flex flex-col">
                                 {navItems
-                                    .filter(item => !['Know us', 'Contact us'].includes(item.name))
                                     .map(item => {
                                         const active = location.pathname === item.path;
                                         return (

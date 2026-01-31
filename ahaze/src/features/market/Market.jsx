@@ -87,19 +87,19 @@ const Market = () => {
     };
 
     return (
-        <div className="flex flex-col lg:flex-row gap-8 min-h-screen animate-in fade-in duration-700 pb-20">
+        <div className="flex flex-col lg:flex-row gap-6 min-h-screen animate-in fade-in duration-700 pb-14">
             {/* Market Sidebar - Premium Faceted Nav */}
             <aside className="lg:w-72 flex flex-col gap-8">
-                <div className="bg-white rounded-[40px] p-8 shadow-sm border border-gray-100 flex flex-col gap-8">
+                <div className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100 flex flex-col gap-6">
                     {/* Location Filter */}
                     <div>
-                        <h3 className="text-[10px] font-black uppercase text-gray-400 mb-4 tracking-[0.2em] flex items-center gap-2">
+                        <h3 className="text-[10px] font-black uppercase text-gray-400 mb-3 tracking-[0.2em] flex items-center gap-2">
                             <MapPin size={12} className="text-dark-green" /> Local Market
                         </h3>
                         <select
                             value={selectedLocation}
                             onChange={(e) => setSelectedLocation(e.target.value)}
-                            className="w-full bg-gray-50 border-2 border-transparent rounded-[20px] px-4 py-3 text-xs font-black text-gray-800 outline-none focus:bg-white focus:border-dark-green transition-all"
+                            className="w-full bg-gray-50 border-2 border-transparent rounded-[16px] px-3 py-2.5 text-xs font-black text-gray-800 outline-none focus:bg-white focus:border-dark-green transition-all"
                         >
                             <option value="All Ethiopia">All Ethiopia</option>
                             {regions.map(r => <option key={r} value={r}>{r}</option>)}
@@ -108,13 +108,13 @@ const Market = () => {
 
                     {/* Categories */}
                     <div>
-                        <h3 className="text-[10px] font-black uppercase text-gray-400 mb-4 tracking-[0.2em]">Departments</h3>
+                        <h3 className="text-[10px] font-black uppercase text-gray-400 mb-3 tracking-[0.2em]">Departments</h3>
                         <div className="space-y-2">
                             {categories.map(cat => (
                                 <button
                                     key={cat.name}
                                     onClick={() => setSelectedCategory(cat.name)}
-                                    className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-xs font-black transition-all active:scale-95 ${selectedCategory === cat.name
+                                    className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-black transition-all active:scale-95 ${selectedCategory === cat.name
                                         ? 'bg-accent-yellow text-gray-900 shadow-lg shadow-accent-yellow/10 -translate-y-0.5'
                                         : 'text-gray-500 hover:bg-gray-50 hover:text-dark-green'
                                         }`}
@@ -128,7 +128,7 @@ const Market = () => {
 
                     {/* Price Filter Mockup */}
                     <div>
-                        <h3 className="text-[10px] font-black uppercase text-gray-400 mb-4 tracking-[0.2em]">Price Range</h3>
+                        <h3 className="text-[10px] font-black uppercase text-gray-400 mb-3 tracking-[0.2em]">Price Range</h3>
                         <div className="px-2">
                             <input type="range" className="w-full accent-dark-green" />
                             <div className="flex justify-between mt-2 text-[10px] font-black text-gray-400">
@@ -168,12 +168,12 @@ const Market = () => {
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-accent-yellow transition-colors" size={20} />
                     </div>
 
-                    <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-1">
+                    <div className="flex flex-wrap items-center gap-3 pb-1">
                         {tabs.map(tab => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`flex items-center gap-2.5 px-6 py-4 rounded-[20px] text-xs font-black transition-all whitespace-nowrap active:scale-95 ${activeTab === tab.id
+                                className={`flex items-center gap-2.5 px-6 py-4 rounded-[20px] text-xs font-black transition-all active:scale-95 ${activeTab === tab.id
                                     ? 'bg-dark-green text-white shadow-xl shadow-dark-green/20 -translate-y-1'
                                     : 'bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600'
                                     }`}

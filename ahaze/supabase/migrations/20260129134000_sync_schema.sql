@@ -60,7 +60,7 @@ ALTER TABLE public.organizations ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public Read Orgs" ON public.organizations;
 CREATE POLICY "Public Read Orgs" ON public.organizations FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Auth Insert Orgs" ON public.organizations;
-CREATE POLICY "Auth Insert Orgs" ON public.organizations FOR INSERT TO authenticated WITH CHECK (auth.uid() = creator_id);
+CREATE POLICY "Auth Insert Orgs" ON public.organizations FOR INSERT TO authenticated WITH CHECK (auth.uid()::text = creator_id::text);
 
 -- 8. REFRESH SCHEMA CACHE
 NOTIFY pgrst, 'reload schema';

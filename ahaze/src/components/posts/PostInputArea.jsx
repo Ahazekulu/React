@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Video, Mic, Paperclip, Zap, Upload, Send, X, Loader2 } from 'lucide-react';
+import { Camera, Video, Mic, Paperclip, Zap, Upload, Send, X, Loader2, Eye, FileText } from 'lucide-react';
 import { supabase, uploadMedia } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -18,12 +18,18 @@ const PostInputArea = ({ place, locationData, levelScope, onPostSuccess }) => {
     const [attachments, setAttachments] = useState([]); // Array of { file, url, type, name }
     const [isPosting, setIsPosting] = useState(false);
 
+    // Debug props
+    console.log('🔧 PostInputArea Props:', { place, locationData, levelScope });
+
     // Recording & Live State
     const [recordingMode, setRecordingMode] = useState(null); // 'audio' | 'video'
-    const [recordingStatus, setRecordingStatus] = useState('idle'); // 'idle' | 'recording'
+    const [recordingStatus, setRecordingStatus] = useState('idle'); // 'idle' | 'recording' | 'live'
     const [recordingTime, setRecordingTime] = useState(0);
     const [showAudioOptions, setShowAudioOptions] = useState(false);
     const [showGifPicker, setShowGifPicker] = useState(false);
+    const [liveViewers, setLiveViewers] = useState(0);
+    const [liveComments, setLiveComments] = useState([]);
+    const [liveReactions, setLiveReactions] = useState([]);
 
     const mediaRecorderRef = useRef(null);
     const streamRef = useRef(null); // Keep track of stream to stop tracks later
@@ -99,29 +105,61 @@ const PostInputArea = ({ place, locationData, levelScope, onPostSuccess }) => {
         recorder.onstop = () => {
             const type = recordingMode;
             const blob = new Blob(chunksRef.current, { type: type === 'video' ? 'video/webm' : 'audio/webm' });
-            const file = new File([blob], `recording_${Date.now()}.webm`, { type: type === 'video' ? 'video/webm' : 'audio/webm' });
-
-            setAttachments(prev => [...prev, {
-                file,
-                url: URL.createObjectURL(blob),
-                type: type,
-                name: `Recorded ${type === 'video' ? 'Video' : 'Audio'}`
-            }]);
-
+            const url = URL.createObjectURL(blob);
+            const file = new File([blob], `live_${type}_${Date.now()}.${type === 'video' ? 'webm' : 'webm'}`, { type: blob.type });
+            
+            setAttachments(prev => [...prev, { file, url, type, name: `Live ${type}` }]);
+            setRecordingStatus('idle');
+            setRecordingMode(null);
+            setRecordingTime(0);
             cleanupRecording();
         };
 
-        recorder.start();
-        setRecordingStatus('recording');
+        recorder.start(1000);
+        setRecordingStatus('live');
+        startTimer();
+        
+        // Simulate live viewers joining
+        simulateLiveStream();
+    };
 
-        setRecordingTime(0);
-        timerRef.current = setInterval(() => {
-            setRecordingTime(prev => prev + 1);
-        }, 1000);
+    const simulateLiveStream = () => {
+        // Simulate viewers joining
+        let viewerCount = Math.floor(Math.random() * 50) + 10;
+        setLiveViewers(viewerCount);
+        
+        const viewerInterval = setInterval(() => {
+            viewerCount += Math.floor(Math.random() * 5) - 2;
+            viewerCount = Math.max(5, viewerCount);
+            setLiveViewers(viewerCount);
+        }, 3000);
+
+        // Simulate live comments
+        const sampleComments = [
+            { user: "Abeba", message: "Amazing stream! 🔥", color: "text-yellow-400" },
+            { user: "Kenna", message: "Where is this location?", color: "text-blue-400" },
+            { user: "Sara", message: "Love the content!", color: "text-green-400" },
+            { user: "Mike", message: "First time here, great vibe!", color: "text-purple-400" },
+            { user: "Tigist", message: "Can you show more around?", color: "text-pink-400" },
+            { user: "Dawit", message: "This is incredible! 🙌", color: "text-orange-400" }
+        ];
+
+        const commentInterval = setInterval(() => {
+            const randomComment = sampleComments[Math.floor(Math.random() * sampleComments.length)];
+            setLiveComments(prev => [...prev.slice(-4), { ...randomComment, timestamp: Date.now() }]);
+        }, 4000);
+
+        // Cleanup intervals when recording stops
+        setTimeout(() => {
+            clearInterval(viewerInterval);
+            clearInterval(commentInterval);
+            setLiveViewers(0);
+            setLiveComments([]);
+        }, 60000); // Auto-cleanup after 1 minute max
     };
 
     const stopRecording = () => {
-        if (mediaRecorderRef.current && recordingStatus === 'recording') {
+        if (mediaRecorderRef.current && (recordingStatus === 'recording' || recordingStatus === 'live')) {
             mediaRecorderRef.current.stop();
         } else {
             cleanupRecording();
@@ -151,11 +189,22 @@ const PostInputArea = ({ place, locationData, levelScope, onPostSuccess }) => {
     const handlePost = async () => {
         if (!user || (!content.trim() && attachments.length === 0)) return;
         setIsPosting(true);
+        
+        console.log('🚀 Starting post creation...');
+        console.log('User:', user);
+        console.log('Content:', content);
+        console.log('Attachments:', attachments);
+        console.log('Props - place:', place);
+        console.log('Props - levelScope:', levelScope);
+        console.log('Props - locationData:', locationData);
+        
         try {
             const uploadPromises = attachments.map(async (att) => {
                 if (!att.file && att.url.startsWith('http')) return { url: att.url, thumbnail: null }; // Existing GIF
                 if (att.file) {
+                    console.log('📤 Uploading file:', att.name);
                     const url = await uploadMedia(att.file, 'posts', user.id);
+                    console.log('✅ File uploaded:', url);
                     let thumbnail = null;
                     if (att.thumbnailFile) {
                         thumbnail = await uploadMedia(att.thumbnailFile, 'posts/thumbnails', user.id);
@@ -178,7 +227,7 @@ const PostInputArea = ({ place, locationData, levelScope, onPostSuccess }) => {
             
             // Determine location_name and level_scope dynamically or from props
             let postLocationName = place || 'Ethiopia';
-            let postLevelScope = levelScope;
+            let postLevelScope = levelScope || 'country'; // Default to 'country' if not provided
 
             // If locationData is provided, derive it from there
             if (locationData) {
@@ -189,8 +238,12 @@ const PostInputArea = ({ place, locationData, levelScope, onPostSuccess }) => {
                 else { postLevelScope = 'country'; postLocationName = 'Ethiopia'; }
             }
 
+            // Ensure levelScope is never null
+            if (!postLevelScope) {
+                postLevelScope = 'country';
+            }
 
-            const { error } = await supabase.from('connect_posts').insert([{
+            const postData = {
                 author_id: user.id,
                 content: content,
                 media_urls: mediaUrls,
@@ -198,13 +251,25 @@ const PostInputArea = ({ place, locationData, levelScope, onPostSuccess }) => {
                 media_type: primaryType,
                 level_scope: postLevelScope,
                 location_name: postLocationName
-            }]);
-            if (error) throw error;
+            };
+
+            console.log('📝 Final post data:', postData);
+            console.log('📍 postLocationName:', postLocationName);
+            console.log('🎯 postLevelScope:', postLevelScope);
+
+            const { data, error } = await supabase.from('connect_posts').insert([postData]);
+            
+            if (error) {
+                console.error('❌ Supabase error:', error);
+                throw error;
+            }
+            
+            console.log('✅ Post created successfully:', data);
             setContent('');
             setAttachments([]);
             if (onPostSuccess) onPostSuccess();
         } catch (err) {
-            console.error('Error posting:', err);
+            console.error('❌ Error posting:', err);
             alert('Failed to post: ' + err.message);
         } finally {
             setIsPosting(false);
@@ -220,7 +285,7 @@ const PostInputArea = ({ place, locationData, levelScope, onPostSuccess }) => {
     }
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 relative overflow-hidden mb-6 shadow-sm">
+        <div className="bg-white rounded-xl border border-gray-100 p-3 relative overflow-hidden mb-3 shadow-sm">
             {recordingMode && (
                 <div className="absolute inset-0 z-50 bg-gray-900 flex flex-col items-center justify-center text-white animate-in fade-in">
                     {recordingMode === 'video' && (
@@ -233,20 +298,29 @@ const PostInputArea = ({ place, locationData, levelScope, onPostSuccess }) => {
                                 className="absolute inset-0 w-full h-full object-cover z-0"
                             />
                             <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-                                <div className="bg-red-600 text-white px-3 py-1 rounded-md font-bold text-xs uppercase tracking-widest inline-flex items-center gap-2">
-                                    {recordingStatus === 'recording' ? 'LIVE' : 'PREVIEW'}
+                                <div className="bg-red-600 text-white px-3 py-1 rounded-md font-bold text-xs uppercase tracking-widest inline-flex items-center gap-2 animate-pulse">
+                                    <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                                    {recordingStatus === 'live' ? 'LIVE' : 'PREVIEW'}
                                 </div>
-                                {recordingStatus === 'recording' && (
-                                    <div className="bg-black/40 backdrop-blur-md px-3 py-1 rounded-md text-xs font-bold flex items-center gap-2">
-                                        <Eye size={14} /> 1.2k Viewers {/* Mock viewers */}
+                                {recordingStatus === 'live' && (
+                                    <div className="bg-black/60 backdrop-blur-md px-3 py-1 rounded-md text-xs font-bold flex items-center gap-2">
+                                        <Eye size={14} /> {liveViewers} watching
                                     </div>
                                 )}
                             </div>
-                            {recordingStatus === 'recording' && (
-                                <div className="absolute bottom-24 left-4 w-64 h-32 mask-image-gradient-to-t pointer-events-none opacity-80 space-y-2 flex flex-col justify-end">
-                                    <div className="flex items-center gap-2 text-sm"><span className="font-bold text-yellow-400">User1</span> Amazing place!</div>
-                                    <div className="flex items-center gap-2 text-sm"><span className="font-bold text-blue-400">Alex</span> Love the vibe 🔥</div>
-                                    <div className="flex items-center gap-2 text-sm"><span className="font-bold text-green-400">Sarah</span> Where is this exactly?</div>
+                            {recordingStatus === 'live' && (
+                                <div className="absolute bottom-24 left-4 right-4 max-w-sm">
+                                    <div className="bg-black/40 backdrop-blur-md rounded-2xl p-3 space-y-2 max-h-32 overflow-y-auto">
+                                        {liveComments.map((comment, idx) => (
+                                            <div key={idx} className="flex items-start gap-2 text-sm animate-in slide-in-from-left-2 duration-300">
+                                                <span className={`font-bold ${comment.color} text-xs`}>{comment.user}:</span>
+                                                <span className="text-white text-xs flex-1">{comment.message}</span>
+                                            </div>
+                                        ))}
+                                        {liveComments.length === 0 && (
+                                            <div className="text-gray-300 text-xs italic">Say hi to your viewers! 👋</div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </>
@@ -259,54 +333,62 @@ const PostInputArea = ({ place, locationData, levelScope, onPostSuccess }) => {
                             </div>
                         )}
 
-                        {recordingStatus === 'recording' && (
-                            <div className="text-5xl font-black font-mono tracking-widest drop-shadow-md">
+                        {recordingStatus === 'live' && (
+                            <div className="text-5xl font-black font-mono tracking-widest drop-shadow-md flex items-center gap-4">
                                 {formatTime(recordingTime)}
+                                <div className="flex gap-1">
+                                    {['❤️', '🔥', '👏', '😮', '😂'].map((emoji, idx) => (
+                                        <span key={idx} className="text-2xl animate-bounce" style={{ animationDelay: `${idx * 0.1}s` }}>{emoji}</span>
+                                    ))}
+                                </div>
                             </div>
                         )}
 
                         {recordingStatus === 'idle' ? (
                             <div className="text-center space-y-4">
-                                <h3 className="text-2xl font-black">{recordingMode === 'video' ? 'Ready to go Live?' : 'Start Audio Recording'}</h3>
+                                <h3 className="text-2xl font-black">{recordingMode === 'video' ? 'Ready to go Live?' : 'Start Audio Live'}</h3>
                                 <p className="text-gray-300 text-sm max-w-xs mx-auto mb-4">
-                                    {recordingMode === 'video' ? 'Check your camera and surroundings. You are in preview mode.' : 'Tap the button below to start recording your voice note.'}
+                                    {recordingMode === 'video' ? 'Check your camera and surroundings. You are in preview mode.' : 'Tap the button below to start your live audio session.'}
                                 </p>
                                 <button
                                     onClick={startCapture}
                                     className="px-12 py-4 bg-white text-gray-900 rounded-full font-black text-lg hover:scale-105 transition-transform shadow-[0_0_40px_rgba(255,255,255,0.3)]"
                                 >
-                                    {recordingMode === 'video' ? 'GO LIVE' : 'START RECORDING'}
+                                    {recordingMode === 'video' ? 'GO LIVE' : 'START LIVE AUDIO'}
                                 </button>
                                 <button onClick={cleanupRecording} className="block w-full text-sm text-gray-400 hover:text-white mt-4 underline">Cancel</button>
                             </div>
                         ) : (
-                            <button
-                                onClick={stopRecording}
-                                className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center hover:scale-105 transition-transform bg-red-500"
-                            >
-                                <div className="w-8 h-8 bg-white rounded-sm" />
-                            </button>
+                            <div className="flex flex-col items-center gap-4">
+                                <button
+                                    onClick={stopRecording}
+                                    className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center hover:scale-105 transition-transform bg-red-500"
+                                >
+                                    <div className="w-8 h-8 bg-white rounded-sm" />
+                                </button>
+                                <p className="text-white text-xs font-black uppercase tracking-widest">End Live Stream</p>
+                            </div>
                         )}
                     </div>
                 </div>
             )}
 
-            <div className="flex gap-4">
-                <div className="w-12 h-12 bg-dark-green/10 text-dark-green rounded-2xl flex-shrink-0 flex items-center justify-center font-black">
+            <div className="flex gap-2">
+                <div className="w-9 h-9 bg-dark-green/10 text-dark-green rounded-lg flex-shrink-0 flex items-center justify-center font-black">
                     {profile?.avatar_url ? <img src={profile.avatar_url} className="w-full h-full object-cover rounded-2xl" /> : (profile?.first_name?.charAt(0) || 'U')}
                 </div>
-                <div className="flex-1 space-y-4">
+                <div className="flex-1 space-y-2">
                     <textarea
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
                         placeholder={`Talk to the community in ${place}...`}
-                        className="w-full bg-gray-50 border-none rounded-3xl p-6 text-sm font-medium focus:ring-2 focus:ring-dark-green outline-none min-h-[120px] resize-none"
+                        className="w-full bg-gray-50 border-none rounded-xl p-3 text-sm font-medium focus:ring-2 focus:ring-dark-green outline-none min-h-[80px] resize-none"
                     />
 
                     {attachments.length > 0 && (
-                        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                        <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
                             {attachments.map((att, index) => (
-                                <div key={index} className="relative w-24 h-24 flex-shrink-0 rounded-2xl overflow-hidden group border border-gray-100 bg-gray-50 flex items-center justify-center">
+                                <div key={index} className="relative w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden group border border-gray-100 bg-gray-50 flex items-center justify-center">
                                     {att.type === 'image' || att.type === 'gif' ? (
                                         <img src={att.url} className="w-full h-full object-cover" />
                                     ) : att.type === 'video' ? (
@@ -410,9 +492,10 @@ const PostInputArea = ({ place, locationData, levelScope, onPostSuccess }) => {
                                 )}
                             </div>
 
-                            <button onClick={() => initializeRecording('video')} className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-all border border-red-100 animate-pulse">
-                                <Video size={18} /> {/* Changed from Radio to Video for consistency */}
-                                <span className="text-[9px] font-black uppercase tracking-widest hidden sm:inline">Live</span>
+                            <button onClick={() => initializeRecording('video')} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all border border-red-400 shadow-lg shadow-red-500/20 animate-pulse">
+                                <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                                <Video size={18} />
+                                <span className="text-[9px] font-black uppercase tracking-widest hidden sm:inline">Go Live</span>
                             </button>
                         </div>
                         <button

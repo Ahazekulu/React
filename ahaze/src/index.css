@@ -37,6 +37,116 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Custom scrollbar styling */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes audio-visualize {
+  0% {
+    height: 10px;
+    transform: scaleY(0.5);
+  }
+  50% {
+    height: 40px;
+    transform: scaleY(1.5);
+  }
+  100% {
+    height: 10px;
+    transform: scaleY(0.5);
+  }
+}
+
+.animate-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+.animate-audio-visualize {
+  animation: audio-visualize 1s ease-in-out infinite;
+}
+
+/* Mobile UX Improvements */
+@media (max-width: 768px) {
+  /* Reduce spacing on mobile */
+  .space-y-6 > * + * {
+    margin-top: 1rem; /* 16px instead of 24px */
+  }
+  
+  .gap-6 {
+    gap: 1rem; /* 16px instead of 24px */
+  }
+  
+  .p-6 {
+    padding: 1rem; /* 16px instead of 24px */
+  }
+  
+  .p-8 {
+    padding: 1.25rem; /* 20px instead of 32px */
+  }
+  
+  /* Better mobile touch targets */
+  .mobile-touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Improve mobile navigation */
+  .mobile-nav-item {
+    padding: 0.5rem 0.75rem;
+  }
+  
+  /* Better mobile cards */
+  .mobile-card {
+    border-radius: 1rem;
+    padding: 1rem;
+  }
+  
+  /* Mobile text adjustments */
+  .mobile-text-sm {
+    font-size: 0.875rem;
+  }
+  
+  .mobile-text-xs {
+    font-size: 0.75rem;
+  }
+}
+
+/* Compact mode for very small screens */
+@media (max-width: 480px) {
+  .space-y-6 > * + * {
+    margin-top: 0.75rem; /* 12px */
+  }
+  
+  .gap-6 {
+    gap: 0.75rem; /* 12px */
+  }
+  
+  .p-4 {
+    padding: 0.75rem; /* 12px */
+  }
+  
+  .p-6 {
+    padding: 0.875rem; /* 14px */
+  }
+}
+
 /* Custom Utilities */
 @layer utilities {
   .bg-dark-green {
@@ -53,5 +163,21 @@ body {
 
   .text-light-blue {
     color: var(--color-secondary);
+  }
+
+  .bg-accent-red {
+    background-color: var(--color-accent-red);
+  }
+
+  .text-accent-red {
+    color: var(--color-accent-red);
+  }
+
+  .bg-accent-yellow {
+    background-color: var(--color-accent-yellow);
+  }
+
+  .text-accent-yellow {
+    color: var(--color-accent-yellow);
   }
 }

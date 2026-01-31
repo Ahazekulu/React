@@ -111,9 +111,9 @@ const Connect = () => {
                 </div>
             </div>
 
-            {/* Premium Tab Navigation (2-row grid on small screens) */}
+            {/* Premium Tab Navigation (flex-wrap for better responsive) */}
             <div className="bg-white/50 backdrop-blur-xl rounded-[32px] p-3 border border-gray-100 shadow-sm">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                <div className="flex flex-wrap gap-2 sm:gap-3">
                     {tabs.map(tab => (
                         <button
                             key={tab.id}
